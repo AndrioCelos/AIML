@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28705.295
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlConsoleBot", "AimlConsoleBot\AimlConsoleBot.csproj", "{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aiml", "Aiml\Aiml.csproj", "{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AimlVoice", "AimlVoice\AimlVoice.csproj", "{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB4B0052-308A-442F-8731-7327173FE776}
+	EndGlobalSection
+EndGlobal

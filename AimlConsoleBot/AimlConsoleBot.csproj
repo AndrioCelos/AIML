@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <Authors>Andrio Celos</Authors>
+    <Company></Company>
+    <Copyright>© 2019 Andrea Giannone</Copyright>
+    <PackageProjectUrl>https://github.com/AndrioCelos/AIML/tree/master/AimlConsoleBot</PackageProjectUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Aiml\Aiml.csproj" />
+  </ItemGroup>
+
+</Project>
