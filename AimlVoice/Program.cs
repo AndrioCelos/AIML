@@ -19,6 +19,7 @@ namespace AimlVoice {
 		internal static SpeechSynthesizer synthesizer;
 		internal static Dictionary<string, Grammar> grammars = new Dictionary<string, Grammar>(StringComparer.InvariantCultureIgnoreCase);
 		internal static string progressMessage = "";
+		internal static string currentGrammar = "";
 		static int Main(string[] args) {
 			bool switches = true; string? botPath = null; string? defaultGrammarPath = null;
 
@@ -27,9 +28,8 @@ namespace AimlVoice {
 				if (switches && s.StartsWith("-")) {
 					if (s == "--")
 						switches = false;
-					else if (s == "-g" || s == "--grammar") {
+					else if (s == "-g" || s == "--grammar")
 						defaultGrammarPath = args[++i];
-					}
 				} else {
 					switches = false;
 					botPath = s;
@@ -62,19 +62,16 @@ namespace AimlVoice {
 				BabbleTimeout = TimeSpan.FromSeconds(1),
 				EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(0.75)
 			}) {
-				// Create and load a dictation grammar.  
+				currentGrammar = defaultGrammarPath ?? "";
 				recognizer.LoadGrammar(grammars[defaultGrammarPath ?? ""]);
 
-				// Add a handler for the speech recognized event.  
 				recognizer.SpeechRecognized += new EventHandler<SpeechRecognizedEventArgs>(recognizer_SpeechRecognized);
 				recognizer.SpeechRecognitionRejected += Recognizer_SpeechRecognitionRejected;
 				recognizer.SpeechHypothesized += Recognizer_SpeechHypothesized;
 				recognizer.RecognizerUpdateReached += Recognizer_RecognizerUpdateReached;
 
-				// Configure input to the speech recognizer.  
 				recognizer.SetInputToDefaultAudioDevice();
 
-				// Start asynchronous, continuous speech recognition.  
 				recognizer.RecognizeAsync(RecognizeMode.Multiple);
 
 				Console.Write("> ");
@@ -136,10 +133,12 @@ namespace AimlVoice {
 				switch (fields[0]) {
 					case "SetGrammar":
 						var name = fields.Length > 1 ? fields[1] : "";
-						Console.WriteLine($"Loading grammar '{name}...'");
-						recognizer.RequestRecognizerUpdate();
-						recognizer.UnloadAllGrammars();
-						recognizer.LoadGrammar(grammars[name]);
+						if (name != currentGrammar) {
+							Console.WriteLine($"Loading grammar '{name}...'");
+							recognizer.RequestRecognizerUpdate();
+							recognizer.UnloadAllGrammars();
+							recognizer.LoadGrammar(grammars[name]);
+						}
 						break;
 				}
 				return "";
