@@ -3,6 +3,7 @@
 using Aiml;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Speech.Recognition;
@@ -20,6 +21,9 @@ namespace AimlVoice {
 		internal static Dictionary<string, Grammar> grammars = new Dictionary<string, Grammar>(StringComparer.InvariantCultureIgnoreCase);
 		internal static string progressMessage = "";
 		internal static string currentGrammar = "";
+		internal static bool partialInput;
+		private static Stopwatch partialInputTimeout = Stopwatch.StartNew();
+
 		static int Main(string[] args) {
 			bool switches = true; string? botPath = null; string? defaultGrammarPath = null;
 
@@ -78,6 +82,7 @@ namespace AimlVoice {
 				while (true) {
 					var message = Console.ReadLine();
 					sendInput(message);
+					Console.Write("> ");
 				}
 			}
 
@@ -105,6 +110,22 @@ namespace AimlVoice {
 			Console.ForegroundColor = ConsoleColor.DarkMagenta;
 			writeMessage($"({e.Result.Text} ... {e.Result.Confidence})");
 			Console.ResetColor();
+
+			if (partialInput && partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3) && e.Result.Confidence
+>= 0.25) {
+					var response = bot.Chat(new Request("PartialInput " + e.Result.Text, user, bot), false);
+					var text = Regex.Replace(response.ToString(), "<oob>([^<]*)</oob>", "");
+					if (!string.IsNullOrWhiteSpace(text)) {
+							partialInputTimeout.Restart();
+							Console.ForegroundColor = ConsoleColor.Blue;
+							Console.WriteLine();
+							Console.WriteLine(text);
+							Console.ResetColor();
+							Console.Write("> ");
+							synthesizer.SpeakAsyncCancelAll();
+							synthesizer.SpeakAsync(text);
+					}
+			}
 		}
 
 		private static void Recognizer_SpeechRecognitionRejected(object sender, SpeechRecognitionRejectedEventArgs e) {
@@ -114,7 +135,8 @@ namespace AimlVoice {
 				Console.ForegroundColor = ConsoleColor.Magenta;
 				Console.WriteLine(e.Result.Alternates[0].Text + "    ");
 				Console.ResetColor();
-				sendInput(e.Result.Alternates[0].Text);
+				if (partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3))
+					sendInput(e.Result.Alternates[0].Text);
 			} else {
 				writeMessage(string.Join(" ", e.Result.Alternates.Select(a => $"({a.Text} ...? {a.Confidence})")));
 				Console.ResetColor();
@@ -140,13 +162,16 @@ namespace AimlVoice {
 							recognizer.LoadGrammar(grammars[name]);
 						}
 						break;
+					case "SetPartialInput":
+						partialInput = bool.Parse(fields[1]);
+						Console.WriteLine($"Partial input is {(partialInput ? "enabled" : "disabled")}.");
+						break;
 				}
 				return "";
 			});
 			Console.ForegroundColor = ConsoleColor.Blue;
 			Console.WriteLine(text);
 			Console.ResetColor();
-			Console.Write("> ");
 			synthesizer.SpeakAsyncCancelAll();
 			synthesizer.SpeakAsync(text);
 		}
@@ -166,7 +191,9 @@ namespace AimlVoice {
 			Console.ForegroundColor = ConsoleColor.Magenta;
 			Console.WriteLine(e.Result.Text + "     ");
 			Console.ResetColor();
-			sendInput(e.Result.Text);
+			if (partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3))
+				sendInput(e.Result.Text);
+			Console.Write("> ");
 		}
 	}
 }
