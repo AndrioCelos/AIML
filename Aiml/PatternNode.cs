@@ -183,7 +183,7 @@ namespace Aiml {
 
 							if (set.Contains(phrase.ToString())) {
 								// Phrase found in the set. Now continue with the tree search.
-								var result = child.Node.Search(sentence, process, inputPath, inputPathIndex + 1, traceSearch, matchState);
+								var result = child.Node.Search(sentence, process, inputPath, inputPathIndex + wordCount, traceSearch, matchState);
 								if (result != null) {
 									star[starIndex] = phrase.ToString();
 									return result;
