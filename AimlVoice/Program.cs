@@ -26,6 +26,7 @@ namespace AimlVoice {
 
 		static int Main(string[] args) {
 			bool switches = true; string? botPath = null; string? defaultGrammarPath = null;
+			string? voice = null;
 
 			for (int i = 0; i < args.Length; ++i) {
 				var s = args[i];
@@ -34,6 +35,8 @@ namespace AimlVoice {
 						switches = false;
 					else if (s == "-g" || s == "--grammar")
 						defaultGrammarPath = args[++i];
+					else if (s == "-v" || s == "--voice")
+						voice = args[++i];
 				} else {
 					switches = false;
 					botPath = s;
@@ -59,7 +62,17 @@ namespace AimlVoice {
 
 			user = new User("User", bot);
 			synthesizer = new SpeechSynthesizer();
-			synthesizer.SelectVoice("Microsoft Zira Desktop");
+			if (voice != null) {
+				try {
+					synthesizer.SelectVoice(voice);
+				} catch (ArgumentException) {
+					Console.Error.WriteLine($"Couldn't load the voice {voice}.");
+					Console.Error.WriteLine($"Available voices:");
+					foreach (var voice2 in synthesizer.GetInstalledVoices().Where(v => v.Enabled))
+						Console.Error.WriteLine(voice2.VoiceInfo.Name);
+					return 1;
+				}
+			}
 			synthesizer.Rate = 1;
 
 			using (recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("en-AU")) {
