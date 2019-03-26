@@ -2,17 +2,24 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace AimlConsoleBot {
 	internal class Program {
 		internal static int Main(string[] args) {
 			bool switches = true; bool useTests = false; string? botPath = null; string? testPath = null;
+			var inputs = new List<string>();
+			var sraixServicePaths = new List<string>();
 
 			for (int i = 0; i < args.Length; ++i) {
 				var s = args[i];
 				if (switches && s.StartsWith("-")) {
 					if (s == "--")
 						switches = false;
+					else if (s == "-i" || s == "--input")
+						inputs.Add(args[++i]);
+					else if (s == "-s" || s == "--services")
+						sraixServicePaths.Add(args[++i]);
 					else if (s == "-t" || s == "--test") {
 						useTests = true;
 						testPath = args[++i];
@@ -29,6 +36,22 @@ namespace AimlConsoleBot {
 
 			var bot = new Bot(botPath);
 			bot.LogMessage += Bot_LogMessage;
+
+			foreach (var path in sraixServicePaths) {
+				var assembly = Assembly.LoadFrom(path);
+				var found = false;
+				foreach (var type in assembly.GetExportedTypes()) {
+					if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
+						Console.WriteLine($"Initialising service {type.FullName} from {path}...");
+						found = true;
+						bot.SraixServices.Add(type.FullName, (ISraixService) Activator.CreateInstance(type));
+					}
+				}
+				if (!found) {
+					Console.Error.WriteLine($"No services found in {path}.");
+					return 1;
+				}
+			}
 
 			bot.LoadConfig();
 			bot.LoadAIML();
@@ -118,6 +141,11 @@ namespace AimlConsoleBot {
 				else Console.Write(" tests failed.");
 				Console.WriteLine();
 			} else {
+				foreach (var s in inputs) {
+					Console.WriteLine("> " + s);
+					bot.Chat(new Request(s, user, bot), false);
+				}
+
 				while (true) {
 					Console.Write("> ");
 					var message = Console.ReadLine();

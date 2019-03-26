@@ -26,7 +26,7 @@ namespace AimlVoice {
 
 		static int Main(string[] args) {
 			bool switches = true; string? botPath = null; string? defaultGrammarPath = null;
-			string? voice = null;
+			string? voice = null; var sraixServicePaths = new List<string>();
 
 			for (int i = 0; i < args.Length; ++i) {
 				var s = args[i];
@@ -35,6 +35,8 @@ namespace AimlVoice {
 						switches = false;
 					else if (s == "-g" || s == "--grammar")
 						defaultGrammarPath = args[++i];
+					else if (s == "-s" || s == "--services")
+						sraixServicePaths.Add(args[++i]);
 					else if (s == "-v" || s == "--voice")
 						voice = args[++i];
 				} else {
@@ -55,6 +57,21 @@ namespace AimlVoice {
 
 			bot = new Bot(botPath);
 			bot.LogMessage += Bot_LogMessage;
+
+			foreach (var path in sraixServicePaths) {
+				var assembly = Assembly.LoadFrom(path);
+				var found = false;
+				foreach (var type in assembly.GetExportedTypes()) {
+					if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
+						Console.WriteLine($"Initialising service {type.FullName} from {path}...");+                                               found = true;
+						bot.SraixServices.Add(type.FullName, (ISraixService) Activator.CreateInstance(type));
+					}
+				}
+				if (!found) {
+					Console.Error.WriteLine($"No services found in {path}.");
+					return 1;
+				}
+			}
 
 			bot.LoadConfig();
 			bot.LoadAIML();
