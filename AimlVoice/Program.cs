@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Speech.Recognition;
 using System.Speech.Synthesis;
 using System.Text;
@@ -20,12 +21,12 @@ namespace AimlVoice {
 		internal static SpeechSynthesizer synthesizer;
 		internal static Dictionary<string, Grammar> grammars = new Dictionary<string, Grammar>(StringComparer.InvariantCultureIgnoreCase);
 		internal static string progressMessage = "";
-		internal static string currentGrammar = "";
+		internal static List<string> enabledGrammarPaths = new List<string>();
 		internal static bool partialInput;
 		private static Stopwatch partialInputTimeout = Stopwatch.StartNew();
-
+		
 		static int Main(string[] args) {
-			bool switches = true; string? botPath = null; string? defaultGrammarPath = null;
+			bool switches = true; string? botPath = null; var defaultGrammarPath = new List<string>();
 			string? voice = null; var sraixServicePaths = new List<string>();
 
 			for (int i = 0; i < args.Length; ++i) {
@@ -33,8 +34,16 @@ namespace AimlVoice {
 				if (switches && s.StartsWith("-")) {
 					if (s == "--")
 						switches = false;
-					else if (s == "-g" || s == "--grammar")
-						defaultGrammarPath = args[++i];
+					else if (s == "-h" || s == "--help" || s == "/?") {
+						Console.WriteLine("Usage: AimlVoice [switches] <bot path>");
+						Console.WriteLine("Available switches:");
+						Console.WriteLine("  -g [name], --grammar [name]: Enable the specified grammar upon startup. Specify a file name in the `grammars` directory without the `.xml` extension.");
+						Console.WriteLine("  -s [path], --services [path]: Load AIML services from the specified library.");
+						Console.WriteLine("  -v [name], --voice [name]: Use the specified voice. If invalid, a list of available voices will be shown.");
+						Console.WriteLine("  --: Stop processing switches.");
+						return 0;
+					} else if (s == "-g" || s == "--grammar")
+						defaultGrammarPath.Add(args[++i]);
 					else if (s == "-s" || s == "--services")
 						sraixServicePaths.Add(args[++i]);
 					else if (s == "-v" || s == "--voice")
@@ -45,11 +54,11 @@ namespace AimlVoice {
 				}
 			}
 			if (botPath == null) {
-				Console.Error.WriteLine("Usage: AimlVoice [--grammar <path>] <bot path>");
+				Console.Error.WriteLine("Usage: AimlVoice [switches] <bot path>");
+				Console.Error.WriteLine("Use `AimlVoice --help` for more information.");
 				return 1;
 			}
 
-			grammars[""] = new DictationGrammar();
 			foreach (var file in Directory.GetFiles(Path.Combine(botPath, "grammars"), "*.xml", SearchOption.AllDirectories)) {
 				var grammar = new Grammar(file);
 				grammars[Path.GetFileNameWithoutExtension(file)] = grammar;
@@ -63,7 +72,8 @@ namespace AimlVoice {
 				var found = false;
 				foreach (var type in assembly.GetExportedTypes()) {
 					if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
-						Console.WriteLine($"Initialising service {type.FullName} from {path}...");+                                               found = true;
+						Console.WriteLine($"Initialising service {type.FullName} from {path}...");
+                        found = true;
 						bot.SraixServices.Add(type.FullName, (ISraixService) Activator.CreateInstance(type));
 					}
 				}
@@ -92,12 +102,28 @@ namespace AimlVoice {
 			}
 			synthesizer.Rate = 1;
 
-			using (recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("en-AU")) {
+			using (recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("en")) {
 				BabbleTimeout = TimeSpan.FromSeconds(1),
 				EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(0.75)
 			}) {
-				currentGrammar = defaultGrammarPath ?? "";
-				recognizer.LoadGrammar(grammars[defaultGrammarPath ?? ""]);
+
+				foreach (var entry in grammars) {
+					Console.WriteLine($"Loading grammar '{entry.Key}'...");
+					entry.Value.Enabled = false;
+					recognizer.LoadGrammar(entry.Value);
+				}
+
+				if (defaultGrammarPath.Count == 0) {
+					Console.WriteLine($"Loading dictation grammar...");
+					enabledGrammarPaths.Add("");
+					grammars[""] = new DictationGrammar();
+					recognizer.LoadGrammar(grammars[""]);
+				} else {
+					foreach (var name in defaultGrammarPath) {
+						enabledGrammarPaths.Add(name);
+						grammars[name].Enabled = true;
+					}
+				}
 
 				recognizer.SpeechRecognized += new EventHandler<SpeechRecognizedEventArgs>(recognizer_SpeechRecognized);
 				recognizer.SpeechRecognitionRejected += Recognizer_SpeechRecognitionRejected;
@@ -115,8 +141,6 @@ namespace AimlVoice {
 					Console.Write("> ");
 				}
 			}
-
-			return 0;
 		}
 
 		private static void Recognizer_RecognizerUpdateReached(object sender, RecognizerUpdateReachedEventArgs e) {
@@ -185,11 +209,16 @@ namespace AimlVoice {
 				switch (fields[0]) {
 					case "SetGrammar":
 						var name = fields.Length > 1 ? fields[1] : "";
-						if (name != currentGrammar) {
-							Console.WriteLine($"Loading grammar '{name}...'");
-							recognizer.RequestRecognizerUpdate();
-							recognizer.UnloadAllGrammars();
-							recognizer.LoadGrammar(grammars[name]);
+						if (!enabledGrammarPaths.Contains(name)) {
+							if (grammars.TryGetValue(name, out var grammar)) {
+								Console.WriteLine($"Switching to grammar '{name}'");
+								foreach (var path in enabledGrammarPaths)
+									grammars[path].Enabled = false;
+								enabledGrammarPaths.Clear();
+								grammar.Enabled = true;
+								enabledGrammarPaths.Add(name);
+							} else
+								Console.WriteLine($"Could not find requested grammar '{name}'.");
 						}
 						break;
 					case "SetPartialInput":
