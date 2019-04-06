@@ -8,7 +8,7 @@
     <Authors>Andrio Celos</Authors>
     <Company></Company>
     <Copyright>© 2019 Andrea Giannone</Copyright>
-    <PackageProjectUrl>https://github.com/AndrioCelos/AIML/tree/master/AimlConsoleBot</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/AndrioCelos/AIML/tree/master/AimlTester</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>

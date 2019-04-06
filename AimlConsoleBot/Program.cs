@@ -7,7 +7,7 @@ using System.Reflection;
 namespace AimlConsoleBot {
 	internal class Program {
 		internal static int Main(string[] args) {
-			bool switches = true; bool useTests = false; string? botPath = null; string? testPath = null;
+			bool switches = true; string? botPath = null;
 			var inputs = new List<string>();
 			var sraixServicePaths = new List<string>();
 
@@ -20,17 +20,13 @@ namespace AimlConsoleBot {
 						inputs.Add(args[++i]);
 					else if (s == "-s" || s == "--services")
 						sraixServicePaths.Add(args[++i]);
-					else if (s == "-t" || s == "--test") {
-						useTests = true;
-						testPath = args[++i];
-					}
 				} else {
 					switches = false;
 					botPath = s;
 				}
 			}
 			if (botPath == null) {
-				Console.Error.WriteLine("Usage: AimlConsoleBot [--test] <bot path>");
+				Console.Error.WriteLine("Usage: AimlConsoleBot <bot path>");
 				return 1;
 			}
 
@@ -55,110 +51,24 @@ namespace AimlConsoleBot {
 
 			bot.LoadConfig();
 			bot.LoadAIML();
-			if (useTests) bot.AimlLoader.LoadAimlFiles(Path.Combine(botPath, testPath!));
 
 			var user = new User("User", bot);
 
-			if (useTests) {
-				Console.WriteLine("Looking for tests...");
-
-				var categories = new List<KeyValuePair<string, Template>>();
-				var tests = new Dictionary<string, TestResult?>();
-				foreach (var entry in bot.Graphmaster.GetTemplates()) {
-					var tests2 = entry.Value.GetTests();
-					foreach (var test in tests2)
-						tests.Add(test.Name, null);
-					if (tests2.Count > 0)
-						categories.Add(entry);
-				}
-
-				if (tests.Count == 1)
-					Console.WriteLine($"{tests.Count} test found.");
-				else
-					Console.WriteLine($"{tests.Count} tests found.");
-
-				foreach (var (path, template) in categories) {
-					Console.WriteLine($"Running test template in file '{template.FileName}' with path '{path}'...");
-
-					var pos = path.IndexOf(" <that> ");
-					var input = path.Substring(0, pos);
-
-					var request = new Request(input, user, bot);
-					var process = new RequestProcess(new RequestSentence(request, input), 0, true);
-					var text = template.Content.Evaluate(process);
-					user.Responses.Add(new Response(request, text));
-
-					foreach (var (name, result) in process.TestResults) {
-						tests[name] = result;
-					}
-				}
-
-				int passes = 0, failures = 0, i = 1;
-				Console.WriteLine();
-				Console.WriteLine("Test results:");
-				Console.WriteLine();
-				foreach (var (name, result) in tests) {
-					Console.ForegroundColor = ConsoleColor.White;
-					Console.Write((i++).ToString().PadLeft(4));
-					Console.Write(": ");
-					Console.Write(name);
-					Console.Write(" ");
-					if (result == null) {
-						++failures;
-						Console.ForegroundColor = ConsoleColor.Red;
-						Console.Write("was not reached");
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.WriteLine(".");
-					} else if (result.Passed) {
-						++passes;
-						Console.ForegroundColor = ConsoleColor.Green;
-						Console.Write("passed");
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.WriteLine($" in {result.Duration.TotalMilliseconds} ms.");
-					} else {
-						++failures;
-						Console.ForegroundColor = ConsoleColor.Red;
-						Console.Write("failed");
-						Console.ForegroundColor = ConsoleColor.White;
-						Console.WriteLine($" in {result.Duration.TotalMilliseconds} ms.");
-						Console.ResetColor();
-						Console.WriteLine(result.Message);
-					}
-				}
-				Console.ResetColor();
-				Console.WriteLine();
-
-				if (passes > 0) Console.ForegroundColor = ConsoleColor.Green;
-				Console.Write(passes);
-				Console.ResetColor();
-				if (passes == 1) Console.Write(" test passed; ");
-				else Console.Write(" tests passed; ");
-
-				if (failures > 0) Console.ForegroundColor = ConsoleColor.Red;
-				Console.Write(failures);
-				Console.ResetColor();
-				if (failures == 1) Console.Write(" test failed.");
-				else Console.Write(" tests failed.");
-				Console.WriteLine();
-			} else {
-				foreach (var s in inputs) {
-					Console.WriteLine("> " + s);
-					bot.Chat(new Request(s, user, bot), false);
-				}
-
-				while (true) {
-					Console.Write("> ");
-					var message = Console.ReadLine();
-					var trace = false;
-					if (message.StartsWith(".trace ")) {
-						trace = true;
-						message = message.Substring(7);
-					}
-					var response = bot.Chat(new Request(message, user, bot), trace);
-				}
+			foreach (var s in inputs) {
+				Console.WriteLine("> " + s);
+				bot.Chat(new Request(s, user, bot), false);
 			}
 
-			return 0;
+			while (true) {
+				Console.Write("> ");
+				var message = Console.ReadLine();
+				var trace = false;
+				if (message.StartsWith(".trace ")) {
+					trace = true;
+					message = message.Substring(7);
+				}
+				var response = bot.Chat(new Request(message, user, bot), trace);
+			}
 		}
 
 		private static void Bot_LogMessage(object sender, LogMessageEventArgs e) {
