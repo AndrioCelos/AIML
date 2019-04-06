@@ -291,8 +291,10 @@ namespace Aiml {
 
 				output = output.Trim();
 
-				if (builder.Length != 0) builder.Append(' ');
-				builder.Append(output);
+				if (output.Length > 0) {
+					if (builder.Length != 0) builder.Append(' ');
+					builder.Append(output);
+				}
 
 				process.Finish();
 			}

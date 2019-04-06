@@ -128,8 +128,15 @@ namespace Aiml {
 		public string Evaluate(RequestProcess process) {
 			if (this.tags == null || this.tags.Length == 0) return string.Empty;
 			StringBuilder builder = new StringBuilder();
-			foreach (TemplateNode tag in this.tags)
-				builder.Append(tag.Evaluate(process));
+			foreach (TemplateNode tag in this.tags) {
+				var output = tag.Evaluate(process);
+
+				// Condense consecutive spaces.
+				if (builder.Length > 0 && char.IsWhiteSpace(builder[builder.Length - 1]))
+					output = output.TrimStart();
+
+				builder.Append(output);
+			}
 			return builder.ToString();
 		}
 
