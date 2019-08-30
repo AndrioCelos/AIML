@@ -1,0 +1,17 @@
+animal:hasPurpose:to live in nature
+cat:isa:animal
+cat:hasPlural:cats
+cat:maleName:tom
+cat:femaleName:queen
+cat:youngName:kitten
+cat:collective:a clutter of cats
+cat:legs:4
+cat:sound:meow
+dog:isa:animal
+dog:hasPlural:dogs
+dog:maleName:dog
+dog:femaleName:bitch
+dog:youngName:puppy or pup
+dog:collective:a pack of dogs
+dog:legs:4
+dog:sound:woof

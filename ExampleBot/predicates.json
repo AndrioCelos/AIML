@@ -1,0 +1,10 @@
+{
+	// Change this to 'true' to disable use of the <sraix> tag.
+	"SraixUnavailable": "false",
+
+	// Bomb properties: the 'new bomb' category should reset these.
+	"BombStrikeCount": "0",
+
+	// Rule seed carries over between bombs until explicitly reset.
+	"RuleSeed": "1"
+}
