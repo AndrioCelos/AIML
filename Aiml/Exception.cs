@@ -18,4 +18,12 @@ namespace Aiml {
 		public RecursionLimitException(string message, Exception inner) : base(message, inner) { }
 		protected RecursionLimitException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 	}
+
+	[Serializable]
+	public class LoopLimitException : Exception {
+		public LoopLimitException() : this("The request exceeded the AIML loop limit.") { }
+		public LoopLimitException(string message) : base(message) { }
+		public LoopLimitException(string message, Exception inner) : base(message, inner) { }
+		protected LoopLimitException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+	}
 }

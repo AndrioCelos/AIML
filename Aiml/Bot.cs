@@ -217,9 +217,13 @@ namespace Aiml {
 				logDirectoryCreated = true;
 			};
 
-			var writer = new StreamWriter(Path.Combine(this.ConfigDirectory, this.Config.LogDirectory, DateTime.Now.ToString("yyyyMMdd") + ".log"), true);
-			writer.WriteLine(DateTime.Now.ToString("[HH:mm:ss]") + "\t[" + level + "]\t" + message);
-			writer.Close();
+			try {
+				var writer = new StreamWriter(Path.Combine(this.ConfigDirectory, this.Config.LogDirectory, DateTime.Now.ToString("yyyyMMdd") + ".log"), true);
+				writer.WriteLine(DateTime.Now.ToString("[HH:mm:ss]") + "\t[" + level + "]\t" + message);
+				writer.Close();
+			} catch (IOException ex) {
+
+			}
 		}
 
 		internal void WriteGossip(RequestProcess process, string message) {
@@ -263,6 +267,9 @@ namespace Aiml {
 			var builder = new StringBuilder();
 			foreach (var sentence in request.Sentences) {
 				var process = new RequestProcess(sentence, recursionDepth, useTests);
+
+				process.Log(LogLevel.Diagnostic, "Normalized text: " + sentence.Text);
+
 				string output;
 				try {
 					var template = request.User.Graphmaster.Search(sentence, process, that, trace);
@@ -287,6 +294,8 @@ namespace Aiml {
 					output = this.Config.TimeoutMessage;
 				} catch (RecursionLimitException) {
 					output = this.Config.RecursionLimitMessage;
+				} catch (LoopLimitException) {
+					output = this.Config.LoopLimitMessage;
 				}
 
 				output = output.Trim();

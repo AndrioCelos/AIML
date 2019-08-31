@@ -33,6 +33,10 @@ namespace Aiml {
 		public int RecursionLimit = 50;
 		/// <summary>The response to a request that exceeds the recursion limit.</summary>
 		public string RecursionLimitMessage = "Too much recursion in AIML.";
+		/// <summary>The maximum allowed number of loops on a single <c>condition</c> template element.</summary>
+		public int LoopLimit = 100;
+		/// <summary>The response to a request that exceeds the loop limit.</summary>
+		public string LoopLimitMessage = "Too much looping in condition.";
 
 		public int DefaultDelay = 1000;
 

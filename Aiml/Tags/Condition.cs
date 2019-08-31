@@ -86,8 +86,14 @@ namespace Aiml {
 			public override string Evaluate(RequestProcess process) {
 				StringBuilder builder = new StringBuilder();
 
-				li item;
+				li item; int loops = 0;
 				do {
+					++loops;
+					if (loops > process.Bot.Config.LoopLimit) {
+						process.Log(LogLevel.Warning, "Loop limit exceeded. User: " + process.User.ID + "; path: \"" + process.Path + "\"");
+						throw new LoopLimitException();
+					}
+
 					item = this.Pick(process);
 					if (item == null) return string.Empty;
 					builder.Append(item.Children?.Evaluate(process));
