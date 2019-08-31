@@ -68,6 +68,7 @@ namespace AimlConsoleBot {
 					message = message.Substring(7);
 				}
 				var response = bot.Chat(new Request(message, user, bot), trace);
+				Console.WriteLine($"{bot.Properties.GetValueOrDefault("name", "Robot")}: {response}");
 			}
 		}
 
