@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Xml;
 
@@ -12,20 +13,30 @@ namespace Aiml.Tags {
 	/// </remarks>
 	public sealed class Oob : RecursiveTemplateTag {
 		public string Name { get; }
+		public string? Attributes { get; }
 
-		public Oob(string name, TemplateElementCollection? children) : base(children) {
+		public Oob(string name, string? attributes, TemplateElementCollection? children) : base(children) {
 			this.Name = name;
+			this.Attributes = attributes;
 		}
 
 		public override string Evaluate(RequestProcess process) {
 			if (this.Children != null)
-				return $"<{this.Name}>{this.Children?.Evaluate(process) ?? ""}</{this.Name}>";
+				return $"<{this.Name}{this.Attributes}>{this.Children?.Evaluate(process) ?? ""}</{this.Name}>";
 			else
-				return $"<{this.Name}/>";
+				return $"<{this.Name}{this.Attributes}/>";
 		}
 
 		public static Oob FromXml(XmlNode node, AimlLoader loader, params string[] childTags) {
+			var builder = new StringBuilder();
+			foreach (var attribute in node.Attributes.Cast<XmlAttribute>()) {
+				builder.Append(' ');
+				builder.Append(attribute.OuterXml);
+			}
+
+			var oldFC = loader.ForwardCompatible;
 			if (node.HasChildNodes) {
+				loader.ForwardCompatible = true;
 				var children = new List<TemplateNode>();
 				foreach (XmlNode node2 in node.ChildNodes) {
 					if (node2.NodeType == XmlNodeType.Whitespace) {
@@ -40,9 +51,10 @@ namespace Aiml.Tags {
 							children.Add(loader.ParseElement(node2));
 					}
 				}
-				return new Oob(node.Name, new TemplateElementCollection(children.ToArray()));
+				loader.ForwardCompatible = oldFC;
+				return new Oob(node.Name, builder.ToString(), new TemplateElementCollection(children.ToArray()));
 			} else
-				return new Oob(node.Name, null);
+				return new Oob(node.Name, builder.ToString(), null);
 		}
 	}
 }

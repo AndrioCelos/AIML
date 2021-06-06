@@ -68,7 +68,7 @@ namespace Aiml {
 			{ "split"       , (node, loader) => Tags.Oob.FromXml(node, loader) },
 			{ "list"        , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
 			{ "olist"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-			
+
 			// Test
 			{ "test"        , (node, loader) => TemplateNode.Test.FromXml(node, loader) },
 
@@ -96,7 +96,7 @@ namespace Aiml {
 			{ "item"        , NotValidHandler                }
 		};
 		public static Version AimlVersion => new Version(2, 1);
-		public bool ForwardCompatible { get; private set; }
+		public bool ForwardCompatible { get; internal set; }
 
 		public AimlLoader(Bot bot) {
 			this.bot = bot;

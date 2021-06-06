@@ -4,7 +4,7 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Splits the content into individual letters and digits, separated by a space.
+		///     Splits the content into individual characters, separated by a space. Existing whitespace characters are skipped.
 		/// </summary>
 		/// <remarks>
 		///     This element is defined by the AIML 2.0 specification.
@@ -14,7 +14,7 @@ namespace Aiml {
 
 			public override string Evaluate(RequestProcess process) {
 				string value = this.Children?.Evaluate(process) ?? "";
-				return string.Join(" ", value.Where(c => char.IsLetterOrDigit(c)));
+				return string.Join(" ", value.Where(c => !char.IsWhiteSpace(c)));
 			}
 
 			public static Explode FromXml(XmlNode node, AimlLoader loader) {
