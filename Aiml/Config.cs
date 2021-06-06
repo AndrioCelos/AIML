@@ -155,8 +155,12 @@ namespace Aiml {
 			public override object? ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
 				var list = serializer.Deserialize<string[]>(reader);
 				if (list == null) return null;
-				if (list == null || list.Length != 2) throw new JsonException("Substitutions must have exactly 2 elements.");
-				return new Substitution(list[0], list[1]);
+				if (list.Length == 3) {
+					return new Substitution(list[0], list[1], true);
+				} else if (list.Length == 2) {
+					return new Substitution(list[0], list[1]);
+				}
+				throw new JsonException("Substitutions must have 2 to 3 elements.");
 			}
 
 			public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
