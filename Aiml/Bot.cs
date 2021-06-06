@@ -124,15 +124,31 @@ namespace Aiml {
 
 				var set = new List<string>();
 
-				StreamReader reader = new StreamReader(file);
+				using var reader = new StreamReader(file);
+				var phraseBuilder = new StringBuilder();
 				while (!reader.EndOfStream) {
-					var phrase = reader.ReadLine();
-					// Remove comments.
-					var pos = phrase.IndexOf('#');
-					if (pos >= 0) phrase = phrase.Substring(0, pos);
-					phrase = phrase.Trim();
-					if (phrase == "") continue;
+					phraseBuilder.Clear();
+					bool trailingBackslash = false;
 
+					while (true) {
+						var c = reader.Read();
+						if (c < 0 || c == '\r' || c == '\n') break;  // End of stream or newline
+						if (c == '\\') {
+							c = reader.Read();
+							if (c < 0 || c == '\r' && c == '\n') {
+								trailingBackslash = true;
+								break;
+							}
+							phraseBuilder.Append((char) c);
+						}
+						if (c == '#') {
+							// Comment
+							do { c = (char) reader.Read(); } while (c >= 0 && c != '\r' && c != '\n');
+						}
+						phraseBuilder.Append((char) c);
+					}
+					var phrase = phraseBuilder.ToString();
+					if (!trailingBackslash && string.IsNullOrWhiteSpace(phrase)) continue;
 					set.Add(phrase);
 				}
 
@@ -159,11 +175,10 @@ namespace Aiml {
 					var line = reader.ReadLine();
 
 					// Remove comments.
-					var pos = line.IndexOf('#');
-					if (pos >= 0) line = line.Substring(0, pos);
+					line = Regex.Replace(line, @"\\([\\#])|#.*", "$1");
 					if (string.IsNullOrWhiteSpace(line)) continue;
 
-					pos = line.IndexOf(':');
+					var pos = line.IndexOf(':');
 					if (pos < 0)
 						this.Log(LogLevel.Warning, "Map '" + Path.GetFileNameWithoutExtension(file) + "' contains a badly formatted line: " + line);
 					else {
@@ -262,13 +277,14 @@ namespace Aiml {
 		internal Response ProcessRequest(Request request, bool trace, bool useTests, int recursionDepth, out TimeSpan duration) {
 			var stopwatch = Stopwatch.StartNew();
 			var that = this.Normalize(request.User.GetThat());
+			var topic = this.Normalize(request.User.Topic);
 
 			// Respond to each sentence separately.
 			var builder = new StringBuilder();
 			foreach (var sentence in request.Sentences) {
 				var process = new RequestProcess(sentence, recursionDepth, useTests);
 
-				process.Log(LogLevel.Diagnostic, "Normalized text: " + sentence.Text);
+				process.Log(LogLevel.Diagnostic, $"Normalized path: {sentence.Text} <THAT> {that} <TOPIC> {topic}");
 
 				string output;
 				try {
@@ -355,7 +371,12 @@ namespace Aiml {
 		}
 
 		public string Normalize(string text) {
-			return this.Config.NormalSubstitutions.Apply(text);
+			text = this.Config.NormalSubstitutions.Apply(text);
+			// Strip sentence delimiters from the end when normalising (from Pandorabots).
+			for (int i = text.Length - 1; i >= 0; --i) {
+				if (!this.Config.Splitters.Contains(text[i])) return text.Substring(0, i + 1);
+			}
+			return text;
 		}
 
 		public string Denormalize(string text) {
