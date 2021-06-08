@@ -69,9 +69,6 @@ namespace Aiml {
 			{ "list"        , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
 			{ "olist"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
 
-			// Test
-			{ "test"        , (node, loader) => TemplateNode.Test.FromXml(node, loader) },
-
 			// Program AB extension
 			{ "select"      , TemplateNode.Select.FromXml       },
 			{ "uniq"        , TemplateNode.Uniq.FromXml         },
@@ -79,6 +76,10 @@ namespace Aiml {
 			{ "rest"        , TemplateNode.Rest.FromXml         },
 			{ "addtriple"   , TemplateNode.AddTriple.FromXml    },
 			{ "deletetriple", TemplateNode.DeleteTriple.FromXml },
+
+			// Non-standard extensions
+			{ "calculate"   , TemplateNode.Calculate.FromXml    },
+			{ "test"        , TemplateNode.Test.FromXml },
 
 			// Invalid template-level tags
 			{ "eval"        , NotValidHandler                },
