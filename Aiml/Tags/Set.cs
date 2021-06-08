@@ -5,17 +5,23 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Sets the value of a predicate for the current user or a local variable to the content.
+		///     Sets the value of a predicate or a local variable to the content, and returns the content.
 		/// </summary>
 		/// <remarks>
-		///     This element has two forms:
-		///         <code><set name="predicate" /></code> or <code><set><name>predicate</name></set></code>
-		///             Sets the value of a predicate for the current user.
-		///             This form is defined by the AIML 1.1 specification.
-		///         <code><set var="variable" /></code> or <code><set><var>variable</var></set></code>
-		///             Sets the value of a local variable. Local variables are specific to the category in which they are set.
-		///             This form is defined by the AIML 2.0 specification.
+		///     <para>This element has two forms:</para>
+		///     <list type="bullet">
+		///			<item>
+		///				<term><c>&lt;set name='predicate'&gt;value&lt;/set&gt;</c></term>
+		///				<description>Sets a predicate for the current user.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>&lt;set var='variable'&gt;value&lt;/set&gt;</c></term>
+		///				<description>Sets a local variable for the containing category.</description>
+		///			</item>
+		///     </list>
+		///     <para>This element is defined by the AIML 1.1 specification. Local variables are defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="AddTriple"/><seealso cref="Get"/>
 		public sealed class Set : RecursiveTemplateTag {
 			public TemplateElementCollection Key { get; private set; }
 			public bool LocalVar { get; private set; }

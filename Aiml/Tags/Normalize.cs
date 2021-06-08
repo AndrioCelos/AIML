@@ -3,11 +3,12 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Normalises the content and returns the result.
+		///     Applies bot-defined normalisation substitutions to the content and removes leading, trailing and repeated whitespace, and returns the result.
 		/// </summary>
 		/// <remarks>
 		///     This element is defined by the AIML 2.0 specification.
 		/// </remarks>
+		/// <seealso cref="Denormalize"/>
 		public sealed class Normalize : RecursiveTemplateTag {
 			public Normalize(TemplateElementCollection children) : base(children) { }
 

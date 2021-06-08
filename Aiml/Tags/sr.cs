@@ -6,10 +6,11 @@ namespace Aiml {
 		///     Recurses the text matched by the first message wildcard into a new request and returns the result.
 		/// </summary>
 		/// <remarks>
-		///     This element is shorthand for <code><srai><star/></srai></code>.
-		///     This element has no content.
-		///     This element is defined by the AIML 1.1 specification.
+		///     <para>This element is shorthand for <c><![CDATA[<srai><star/></srai>]]></c>.</para>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Srai"/>
 		public sealed class SR : TemplateNode {
 			public override string Evaluate(RequestProcess process) {
 				string text = process.star[0];

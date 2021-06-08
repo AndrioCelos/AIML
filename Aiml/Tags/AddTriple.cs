@@ -4,6 +4,23 @@ using System.Xml;
 
 namespace Aiml {
 	public partial class TemplateNode {
+		/// <summary>
+		///     Adds a triple to the bot's triple database and returns an opaque identifier for the newly added triple.
+		/// </summary>
+		/// <remarks>
+		///		<para>This element has the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>subj</c>, <c>pred</c>, <c>obj</c></term>
+		///				<description>specify the triple to be added.</description>
+		///			</item>
+		///		</list>
+		///     <para>If the triple already exists, the triple database is unchanged and the identifier of the existing triple is returned.
+		///			If the triple cannot be added, <c>DefaultTriple</c> is returned.</para>
+		///     <para>This element has no content.</para>
+		///		<para>This element is part of an extension to AIML derived from Program AB.</para>
+		/// </remarks>
+		/// <seealso cref="DeleteTriple"/><seealso cref="Learn"/><seealso cref="LearnF"/><seealso cref="Select"/><seealso cref="Uniq"/>
 		public sealed class AddTriple : TemplateNode {
 			public TemplateElementCollection Subject { get; }
 			public TemplateElementCollection Predicate { get; }

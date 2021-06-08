@@ -3,12 +3,13 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Replaces words in the content with first-person aspect with the corresponding second-person aspect, and vice versa.
+		///     Applies bot-defined second-person substitutions to the content and returns the result.
 		/// </summary>
 		/// <remarks>
-		///     This element can also be used without content, in which case it is shorthand for <code><person><star/></person></code>.
-		///     This element is defined by the AIML 1.1 specification.
+		///		<para>This element can also be used without content, in which case it is shorthand for <c><![CDATA[<person><star/></person>]]></c>.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Person2"/>
 		public sealed class Person : RecursiveTemplateTag {
 			public Person(TemplateElementCollection children) : base(children) { }
 

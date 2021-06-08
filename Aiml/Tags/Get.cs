@@ -7,18 +7,25 @@ namespace Aiml {
 		///     Returns the value of a predicate for the current user, local variable or tuple variable.
 		/// </summary>
 		/// <remarks>
-		///     This element has three forms:
-		///         <code><get name="predicate" /></code> or <code><get><name>predicate</name></get></code>
-		///             Returns the value of a predicate for the current user, or a default value if none is found.
-		///             This form is defined by the AIML 1.1 specification.
-		///         <code><get var="variable" /></code> or <code><get><var>variable</var></get></code>
-		///             Returns the value of a local variable. Local variables are specific to the category in which they are set.
-		///             This form is defined by the AIML 2.0 specification.
-		///         <code><get var="?variable" /><tuple>tuple</tuple></code> or <code><get><var>variable</var><tuple>tuple</tuple></get></code>
-		///             Returns the value of a tuple variable. See <see cref="Select" /> for more information.
-		///             This form is not part of the AIML specification, and was derived from Program AB.
-		///     This element has no content.
+		///     <para>This element has three forms:</para>
+		///     <list type="bullet">
+		///			<item>
+		///				<term><c>&lt;get name='predicate'/&gt;</c></term>
+		///				<description>Returns the value of the specified predicate for the current user, or <c>DefaultPredicate</c> if it is not bound.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>&lt;get var='variable'/&gt;</c></term>
+		///				<description>Returns the value of a local variable for the containing category, or <c>DefaultPredicate</c> if it is not bound.</description>
+		///			</item>
+		///			<item>
+		///				<term><c><![CDATA[<get var='?variable'><tuple>tuple</tuple></get>]]></c></term>
+		///				<description>Returns the value of a tuple variable set by a <see cref="Select"/> element.</description>
+		///			</item>
+		///     </list>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 1.1 specification. Local variables are defined by the AIML 2.0 specification. Tuples are part of an extension to AIML derived from Program AB.</para>
 		/// </remarks>
+		/// <seealso cref="Select"/><seealso cref="Set"/>
 		public sealed class Get : TemplateNode {
 			public TemplateElementCollection Key { get; }
 			public TemplateElementCollection TupleKey { get; }

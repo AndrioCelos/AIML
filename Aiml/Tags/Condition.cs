@@ -11,9 +11,35 @@ namespace Aiml {
 		///     Returns one of a choice of child elements depending on the results of matching a predicate against a pattern.
 		/// </summary>
 		/// <remarks>
-		///     TODO: fill this in.
-		///     This element is defined by the AIML 1.1 specification.
+		///     <para>This element has three forms:</para>
+		///     <list type="bullet">
+		///			<item>
+		///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
+		///				<description>
+		///					<para>If the value of the specified predicate or local variable matches the specified value, it returns its contents; otherwise it returns the empty string.</para>	
+		///				</description>
+		///			</item>
+		///			<item>
+		///				<term><c><![CDATA[<condition name='predicate'>]]></c> or <c><![CDATA[<condition var='variable'>]]></c></term>
+		///				<description>
+		///					<para>This form can only contain <c>li</c> elements as direct children.</para>
+		///					<para>The first <c>li</c> element that matches the value of the specified predicate or variable is returned.</para>	
+		///					<para>The last <c>li</c> element may lack a <c>value</c> attribute, in which case it will match by default if no earlier item matches.</para>
+		///				</description>
+		///			</item>
+		///			<item>
+		///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
+		///				<description>
+		///					<para>This form can only contain <c>li</c> elements as direct children.</para>
+		///					<para>The first <c>li</c> element whose specified predicate or variable matches its specified value is returned.</para>	
+		///					<para>The last <c>li</c> element may lack attributes, in which case it will match by default if no earlier item matches.</para>
+		///				</description>
+		///			</item>
+		///     </list>
+		///		<para>In each case, if the value is <c>*</c>, it instead checks whether the predicate or variable is bound to any value.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Get"/><seealso cref="Random"/>
 		public sealed class Condition : TemplateNode {
 			private readonly li[] items;
 			public ReadOnlyCollection<li> Items { get; }

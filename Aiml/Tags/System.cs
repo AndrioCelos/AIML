@@ -10,12 +10,24 @@ namespace Aiml {
 		///     Sends the content as a command to a system command interpreter and returns the output of the command via standard output and standard error.
 		/// </summary>
 		/// <remarks>
-		///     On Windows, the command interpreter used is cmd.exe:
-		///         cmd.exe /Q /D /C "command"
-		///     On UNIX, the command interpreter used is sh:
-		///         /bin/sh command
-		///     This element is defined by the AIML 1.1 specification.
+		///		<para>The command interpreter used depends on the platform. The currently supported platforms are as follows:</para>
+		///		<list type="table">
+		///			<listheader>
+		///				<term>Platform</term>
+		///				<description>Command interpreter</description>
+		///			</listheader>
+		///			<item>
+		///				<term>Windows</term>
+		///				<description><c>cmd.exe /Q /D /C "command"</c></description>
+		///			</item>
+		///			<item>
+		///				<term>UNIX</term>
+		///				<description><c>/bin/sh command</c></description>
+		///			</item>
+		///		</list>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="SraiX"/>
 		public sealed class System : TemplateNode {
 			public TemplateElementCollection Command { get; private set; }
 

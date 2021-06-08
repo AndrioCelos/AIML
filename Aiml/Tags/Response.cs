@@ -4,13 +4,21 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns the entire text of a previous response.
+		///     Returns the entire text of a previous output from the bot, consisting of zero or more sentences.
 		/// </summary>
 		/// <remarks>
-		///     The optional index property can contain an integer. It defaults to 1. The index-th last response is returned, corresponding to the index-th last request.
-		///     This element has no content.
-		///     This element is defined by the AIML 2.0 specification.
+		///		<para>This element has the following attribute:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>index</c></term>
+		///				<description>a number specifying which line to return. 1 returns the previous response, and so on.
+		///					If omitted, 1 is used.</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Input"/><seealso cref="Request"/><seealso cref="That"/>
 		public sealed class Response : TemplateNode {
 			public TemplateElementCollection Index { get; set; }
 

@@ -4,12 +4,12 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Converts the content to title case.
+		///     Converts the content to title case by converting the first letter of each word to uppercase and other letters to lowercase.
 		/// </summary>
 		/// <remarks>
-		///     This element capitalises the first letter of each word of the content.
 		///     This element is defined by the AIML 1.1 specification.
 		/// </remarks>
+		/// <seealso cref="Lowercase"/><seealso cref="Sentence"/><seealso cref="Uppercase"/>
 		public sealed class Formal : RecursiveTemplateTag {
 			public Formal(TemplateElementCollection children) : base(children) { }
 

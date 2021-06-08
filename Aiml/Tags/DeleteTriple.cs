@@ -4,6 +4,19 @@ using System.Xml;
 
 namespace Aiml {
 	public partial class TemplateNode {
+		/// <summary>
+		///     Deletes a triple from the bot's triple database and returns an opaque identifier for the deletedtriple.
+		/// </summary>
+		/// <remarks>
+		///     This element supports the following attributes, specifying the parts of the triple to be deleted:
+		///         subject
+		///         predicate
+		///         object
+		///     If the triple does not exist, the triple database is unchanged and DefaultTriple returned.
+		///     This element has no content.
+		///		This element is not part of the AIML specification, and was derived from Program AB.
+		/// </remarks>
+		/// <seealso cref="AddTriple"/><seealso cref="Select"/><seealso cref="Uniq"/>
 		public sealed class DeleteTriple : TemplateNode {
 			public TemplateElementCollection Subject { get; }
 			public TemplateElementCollection Predicate { get; }

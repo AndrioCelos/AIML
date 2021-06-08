@@ -6,12 +6,13 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Randomly selects and returns one of a choice of child elements.
+		///     Randomly selects and returns one of its child elements.
 		/// </summary>
 		/// <remarks>
-		///     This element can only contain <li> elements as direct children.
-		///     This element is defined by the AIML 1.1 specification.
+		///     <para>This element can only contain <c>li</c> elements as direct children.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Condition"/>
 		public sealed class Random : TemplateNode {
 			private li[] items;
 

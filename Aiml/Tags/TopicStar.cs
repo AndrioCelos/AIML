@@ -3,6 +3,21 @@ using System.Xml;
 
 namespace Aiml {
 	public partial class TemplateNode {
+		/// <summary>
+		///     Returns the text matched by a wildcard or set tag in a <c>topic</c> pattern.
+		/// </summary>
+		/// <remarks>
+		///		<para>This element has the following attribute:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>index</c></term>
+		///				<description>the one-based index of the wildcard or set tag to check. If omitted, 1 is used.</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no content.</para>
+		///		<para>This element is defined by the AIML 1.1 specification.</para>
+		/// </remarks>
+		/// <seealso cref="Star"/><seealso cref="ThatStar"/>
 		public sealed class TopicStar : TemplateNode {
 			public TemplateElementCollection Index { get; private set; }
 

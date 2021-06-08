@@ -3,11 +3,11 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Replaces male-gendered words in the content with the corresponding female-gendered words, and vice versa.
+		///     Applies bot-defined pronoun substitutions to the content and returns the result.
 		/// </summary>
 		/// <remarks>
-		///     This element can also be used without content, in which case it is shorthand for <code><gender><star /></gender></code>.
-		///     This element is defined by the AIML 1.1 specification.
+		///		<para>This element can also be used without content, in which case it is shorthand for <c><![CDATA[<gender><star/></gender>]]></c>.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
 		public sealed class Gender : RecursiveTemplateTag {
 			public Gender(TemplateElementCollection children) : base(children) { }

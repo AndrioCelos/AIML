@@ -7,10 +7,17 @@ namespace Aiml {
 		///     Returns a sentence previously output by the bot for the current session.
 		/// </summary>
 		/// <remarks>
-		///     The optional index property can contain up to two integers, separated by a comma. Both default to 1. An index of "m,n" returns the nth sentence in the mth last response.
-		///     This element has no content.
-		///     This element is defined by the AIML 1.1 specification.
+		///		<para>This element has the following attribute:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>index</c></term>
+		///				<description>two numbers, comma-separated. <c>m,n</c> returns the nth last sentence of the mth last response. If omitted, <c>1,1</c> is used.</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Input"/><seealso cref="Request"/><seealso cref="Response"/>
 		public sealed class That : TemplateNode {
 			public TemplateElementCollection Index { get; set; }
 

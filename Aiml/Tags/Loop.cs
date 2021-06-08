@@ -3,12 +3,13 @@
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     When used in a li element, causes the condition or random element to be re-evaluated.
+		///     When used in a <c>li</c> element, causes the <see cref="Condition"/> or <see cref="Random"/> check to loop if evaluated, concatenating the outputs.
 		/// </summary>
 		/// <remarks>
-		///     This element has no content.
-		///     This element is defined by the AIML 2.0 specification.
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Srai"/>
 		public sealed class Loop : TemplateNode {
 			public Loop() { }
 

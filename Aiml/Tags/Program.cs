@@ -6,8 +6,8 @@ namespace Aiml {
 		///     Returns the name and version of the AIML interpreter.
 		/// </summary>
 		/// <remarks>
-		///     This element has no content.
-		///     This element is defined by the AIML 2.0 specification.
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
 		public sealed class Program : TemplateNode {
 			public override string Evaluate(RequestProcess process) {

@@ -8,6 +8,7 @@ namespace Aiml {
 		/// <remarks>
 		///     This element is defined by the AIML 1.1 specification.
 		/// </remarks>
+		/// <seealso cref="Formal"/><seealso cref="Sentence"/><seealso cref="Uppercase"/>
 		public sealed class Lowercase : RecursiveTemplateTag {
 			public Lowercase(TemplateElementCollection children) : base(children) { }
 

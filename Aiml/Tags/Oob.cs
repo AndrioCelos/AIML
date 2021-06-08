@@ -5,11 +5,13 @@ using System.Text;
 using System.Xml;
 
 namespace Aiml.Tags {
-	/// <summary>Represents an <code>oob</code> or rich media tag. These are not fully parsed during template processing.</summary>
+	/// <summary>
+	///		Represents an out-of-band or rich media tag. These are not fully parsed during template processing.
+	///	</summary>
 	/// <remarks>
-	///	    <code>oob</code> and rich media tags provide out-of-band instructions to the client in the response.
-	///     The <code>oob</code> element is defined by the AIML 2.0 specification.
-	///     Rich media elements are defined by the AIML 2.1 draft specification.
+	///	    <para><c>oob</c> and rich media tags provide out-of-band instructions to the innterpreter.</para>
+	///     <para>The <c>oob</c> element is defined by the AIML 2.0 specification.
+	///			Rich media elements are defined by the AIML 2.1 draft specification.</para>
 	/// </remarks>
 	public sealed class Oob : RecursiveTemplateTag {
 		public string Name { get; }

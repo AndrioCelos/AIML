@@ -6,71 +6,86 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Selects values for variables that fulfil query conditions involving triples, and returns a space-separated list of tuple keys.
+		///     Selects tuples consisting of values for variables that fulfil a list of query conditions involving triples, and returns a space-separated list of tuple identifiers.
 		/// </summary>
 		/// <remarks>
-		///     A select tag contains a vars element and one or more clauses.
-		///     q and notq elements form clauses.
-		///     The search starts with an empty tuple (which contains no values). q clauses can add more possible tuples that match the query.
-		///         vars
-		///             Defines variables used in the query as 'visible'. Not used.
-		///         q
-		///             Includes tuples for which this clause matches a triple.
-		///         notq
-		///             Excludes tuples for which this clause matches a triple.
-		///             If the first clause is a notq, and any triples match the clause, the result will automatically be empty as all tuples being considered are excluded.
-		///     Each clause contains three children: subj, pred and obj.
-		///     Each refers to an element of a triple, and can contain a variable name starting with '?', or text:
-		///         Text asserts that a triple element matches the text.
-		///         A variable set by a previous clause asserts that a triple element matches its value.
-		///         An unbound variable makes no assertion, and is set to possible values that satisfy the clause. (All possible values are considered and compared with subsequent clauses in turn.)
-		///     This element can only contain <vars>, <q> and <notq> elements as direct children.
-		///     This element is not part of the AIML specification, and was derived from Program AB.
+		///		<para>This element has the following attribute:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>vars</c></term>
+		///				<description>a space-separated list of variables in the query to define as 'visible'. Results (tuples) are considered duplicate if all visible variables match.</description>
+		///			</item>
+		///		</list>
+		///		<para>A select tag also contains one or more clauses in the form of <c>q</c> and <c>notq</c> elements.</para>
+		///		<para>The search starts with an empty tuple (which contains no values). <c>q</c> clauses can add possible tuples that match the query.</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>q</c></term>
+		///				<description>includes tuples for which this clause matches a triple.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>notq</c></term>
+		///				<description>excludes tuples for which this clause matches a triple.</description>
+		///			</item>
+		///		</list>
+		///		<para>Clauses have the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>subj</c>, <c>pred</c>, <c>obj</c></term>
+		///				<description>
+		///					<para>If the content starts with a <c>?</c>, it is considered a variable name.</para>
+		///					<para>If the content is text, asserts that the triple element matches the text.</para>
+		///					<para>If the content is a bound variable (by a previous clause), asserts that the triple element matches its value.</para>
+		///				</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no other content.</para>
+		///		<para>This element is part of an extension to AIML derived from Program AB.</para>
 		/// </remarks>
 		/// <example>
 		///     Example:
-		///     <code>
-		///         <set var="tuples">
+		///     <code><![CDATA[
+		///         <set var='tuples'>
 		///             <select>
 		///                 <vars>?x</vars>
 		///                 <q><subj>?x</subj><pred>hasSize</pred><obj>7</obj></q>
 		///                 <q><subj>?x</subj><pred>lifeArea</pred><obj>Physical</obj></q>
 		///             </select>
 		///         </set>
-		///         <condition var="tuples">
-		///             <li value="NIL" />
+		///         <condition var='tuples'>
+		///             <li value='nil' />
 		///             <li>
 		///                 <think>
-		///                     <set var="head"><first><get var="tuples"/></first></set>
-		///                     <set var="tuples"><rest><get var="tuples"/></rest></set>
+		///                     <set var='head'><first><get var='tuples'/></first></set>
+		///                     <set var='tuples'><rest><get var='tuples'/></rest></set>
 		///                 </think>
-		///                 <get var="?x"><tuple><get var="head"/></tuple></get> <loop/>
+		///                 <get var='?x'><tuple><get var="head"/></tuple></get> <loop/>
 		///             </li>
 		///         </condition>
-		///     </code>
-		///     In this example, the select element returns a list of tuples that contain the names of subjects in the physical life area with (relative) size 7,
-		///     and stores this list in a local variable.
-		///     The condition element iterates through this list and outputs the actual subject names to the user.
-		///     Note that the 'NIL' list item is the 'base case' which ends the loop when no more tuples remain.
-		///     <code>
+		///     ]]></code>
+		///     <para>In this example, the <see cref="Select"/> element returns a list of tuples that contain the names of subjects in the physical life area with size 7,
+		///			and stores this list in a local variable.
+		///			The <see cref="Condition"/> element iterates through this list and outputs the actual subject names to the user.</para>
+		///     <para>Note that the 'nil' list item is the base case which ends the loop when no more tuples remain.</para>
+		///     <code><![CDATA[
 		///         <select>
 		///             <vars>?x</vars>
 		///             <q><subj>?x</subj><pred>hasSize</pred><obj>7</obj></q>
 		///             <notq><subj>?x</subj><pred>isa</pred><obj>Person</obj></notq>
 		///         </select>
-		///     </code>
-		///     This example returns a list of tuples containing subjects of size 7 that are not people, such as 'Door'.
-		///     <code>
+		///     ]]></code>
+		///     <para>This example returns a list of tuples containing subjects of size 7 that are not people, such as 'Door'.</para>
+		///     <code><![CDATA[
 		///         <select>
 		///             <vars>?x</vars>
 		///             <q><subj>?x</subj><pred>fatherOf</pred><obj>?y</obj></q>
 		///             <q><subj>?y</subj><pred>parentOf</pred><obj><star /></obj></q>
 		///         </select>
-		///     </code>
-		///     This example may return a list of tuples containing names of grandfathers of a user-specified person.
-		///     Note that the star element is only evaluated once each time the select element is evaluated.
-		///     Of course, the people and relationships must be defined as triples for this to work.
+		///     ]]></code>
+		///     <para>This example may return a list of tuples containing names of grandfathers of a user-specified person.
+		///     Note that the star element is only evaluated once each time the select element is evaluated.</para>
 		/// </example>
+		/// <seealso cref="DeleteTriple"/><seealso cref="DeleteTriple"/><seealso cref="Get"/><seealso cref="Uniq"/>
 		public sealed class Select : TemplateNode {
 			public TemplateElementCollection Variables { get; }
 			public Clause[] Clauses { get; }

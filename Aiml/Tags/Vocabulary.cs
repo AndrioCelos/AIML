@@ -3,12 +3,13 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns the total number of words in pattern paths and AIML sets.
+		///     Returns the total number of words in the pattern graph and AIML sets.
 		/// </summary>
 		/// <remarks>
-		///     This element has no content.
-		///     This element is defined by the AIML 2.0 specification.
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Size"/>
 		public sealed class Vocabulary : TemplateNode {
 			public override string Evaluate(RequestProcess process) {
 				return process.Bot.Vocabulary.ToString();

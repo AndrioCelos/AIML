@@ -4,13 +4,21 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns a sentence previously said to the bot for the current session.
+		///     Returns a current or previous input sentence from the current session.
 		/// </summary>
 		/// <remarks>
-		///     The optional index property can contain up to two integers, separated by a comma. Both default to 1. An index of "m,n" returns the nth sentence in the mth last input.
-		///     This element has no content.
-		///     This element is defined by the AIML 1.1 specification.
+		///		<para>This element has the following attribute:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>index</c></term>
+		///				<description>a number specifying which sentence to return. 1 returns the current input sentence, 2 returns the previous sentence, and so on.
+		///					If omitted, 1 is used.</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Request"/><seealso cref="Response"/><seealso cref="That"/>
 		public sealed class Input : TemplateNode {
 			public TemplateElementCollection Index { get; set; }
 

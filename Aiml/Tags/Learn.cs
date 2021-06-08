@@ -4,13 +4,14 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Processes the content as AIML and adds it to the bot's brain. Categories added via this element are specific to the current user, and thus temporary.
+		///     Processes the content as AIML and adds it to the bot's brain, temporarily and for the current user only, and thus temporary.
 		/// </summary>
 		/// <remarks>
-		///     Unlike other elements with content, the content of this element is not normally evaluated.
-		///     However, the special child element &lt;eval&gt; is replaced with the result of evaluating its own content.
-		///     This element is redefined by the AIML 2.0 specification.
+		///     <para>Unlike other elements with content, the content of this element is not normally evaluated.
+		///			However, the special child element <c>eval</c> is replaced with the result of evaluating its own content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="AddTriple"/><seealso cref="LearnF"/><seealso cref="Set"/>
 		public sealed class Learn : TemplateNode {
 			public XmlNode Node { get; }
 

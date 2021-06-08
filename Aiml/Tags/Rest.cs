@@ -3,11 +3,12 @@
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns the part of the content after the first word.
+		///     Returns the part of the content after the first word, or <c>DefaultListItem</c> if the evaluated content does not have more than one word.
 		/// </summary>
 		/// <remarks>
-		///     This element is not part of the AIML specification, and was derived from Program AB.
+		///     This element is part of the Pandorabots extension of AIML.
 		/// </remarks>
+		/// <seealso cref="First"/><seealso cref="Srai"/>
 		public sealed class Rest : RecursiveTemplateTag {
 			public Rest(TemplateElementCollection children) : base(children) { }
 

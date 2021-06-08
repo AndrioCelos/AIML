@@ -9,8 +9,33 @@ namespace Aiml {
 		///     Returns the amount of time between two dates.
 		/// </summary>
 		/// <remarks>
-		///     This element is defined by the AIML 2.0 specification.
+		///		<para>This element has the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>style</c></term>
+		///				<description>the unit to return.
+		///					Allowed values specified by AIML are <c>minutes</c>, <c>hours</c>, <c>days</c>, <c>weeks</c>, <c>months</c>, and <c>years</c>.
+		///					Allowed values in an extension are <c>milliseconds</c> and <c>seconds</c>.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>jformat</c></term>
+		///				<description>the format of the <c>from</c> and <c>to</c> attributes using a Java Simple Date Format format string.
+		///					See https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for more information.
+		///					If omitted, .NET will attempt to infer the format.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>from</c></term>
+		///				<description>the start date of the interval.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>to</c></term>
+		///				<description>the end date of the interval.</description>
+		///			</item>
+		///		</list>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Date"/>
 		public sealed class Interval : TemplateNode {
 			public TemplateElementCollection JFormat { get; set; }
 			public TemplateElementCollection Start { get; set; }

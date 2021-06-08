@@ -3,11 +3,11 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Processes the content without returning any text.
+		///     Evaluates the content but returns the empty string.
 		/// </summary>
 		/// <remarks>
-		///     This element can be used to set variables or apply transformation to text, and only output the final result.
-		///     This element is defined by the AIML 1.1 specification.
+		///     <para>This element can be used to set variables or make external queries without including intermediate results in output.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
 		public sealed class Think : RecursiveTemplateTag {
 			public Think(TemplateElementCollection children) : base(children) { }

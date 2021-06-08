@@ -6,10 +6,11 @@ namespace Aiml {
 		///     Recurses the content into a new request and returns the result.
 		/// </summary>
 		/// <remarks>
-		///     The content is evaluated and then processed as if it had been entered by the user, including normalisation and other pre-processing.
-		///     It is unknown what 'sr' stands for, but it's probably 'symbolic reduction'.
-		///     This element is defined by the AIML 1.1 specification.
+		///     <para>The content is evaluated and then processed as if it had been entered by the user, including normalisation and other pre-processing.</para>
+		///     <para>It is unknown what 'sr' stands for, but it's probably 'symbolic reduction'.</para>
+		///     <para>This element is defined by the AIML 1.1 specification.</para>
 		/// </remarks>
+		/// <seealso cref="SR"/><seealso cref="SraiX"/>
 		public sealed class Srai : RecursiveTemplateTag {
 			public Srai(TemplateElementCollection children) : base(children) { }
 

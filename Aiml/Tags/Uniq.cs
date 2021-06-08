@@ -6,26 +6,36 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns an element of a single triple matching a clause.
+		///     <para>Returns an element of a single triple matching a clause.</para>
 		/// </summary>
 		/// <remarks>
-		///     This element contains three properties: subj, pred and obj.
-		///     Each refers to an element of a triple, and can contain a variable name starting with '?', or text:
-		///         Text asserts that a triple element matches the text.
-		///         A variable name indicates the element of the triple that is returned. Only the latest-occurring variable (object, then predicate, then subject) is returned.
-		///     This element is not part of the AIML specification, and was derived from Program AB.
+		///		<para>This element has the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>subj</c>, <c>pred</c>, <c>obj</c></term>
+		///				<description>
+		///					<para>May contain a variable starting with <c>?</c> or text.</para>
+		///					<para>Text asserts that a triple element matches the text.</para>
+		///					<para>Exactly one attribute should be a variable; the variable name is ignored and may be simply <c>?</c>. It indicates the element of the triple that is returned.</para>
+		///				</description>
+		///			</item>
+		///		</list>
+		///		<para>If no triple matches, DefaultTriple is returned. If more than one triple matches, a single arbitrary match is used.</para>
+		///     <para>This element has no other content.</para>
+		///     <para>This element is not part of the AIML specification, and was derived from Program AB.</para>
 		/// </remarks>
 		/// <example>
-		///     Examples:
+		///     <para>Examples:</para>
 		///     <code>
-		///         <uniq><subj>York</subj><pred>isa</pred><obj>?object</obj></uniq>
+		///			<![CDATA[<uniq><subj>York</subj><pred>isa</pred><obj>?object</obj></uniq>]]>
 		///     </code>
-		///     This example may return 'City'.
+		///     <para>This example may return 'City'.</para>
 		///     <code>
-		///         <uniq><subj>?id</subj><pred>hasFirstName</pred><obj>Alan</obj></uniq>
+		///         <![CDATA[<uniq><subj>?id</subj><pred>hasFirstName</pred><obj>Alan</obj></uniq>]]>
 		///     </code>
-		///     This example may return a bot-defined text identifying a person named Alan, such as '10099'. The triple may be defined by the <addtriple> element.
+		///     <para>This example may return a bot-defined text identifying a person named Alan, such as '10099'. The triple may be defined by the <c>addtriple</c> element.</para>
 		/// </example>
+		/// <seealso cref="DeleteTriple"/><seealso cref="DeleteTriple"/><seealso cref="Select"/>
 		public sealed class Uniq : TemplateNode {
 			public Clause Clause { get; }
 

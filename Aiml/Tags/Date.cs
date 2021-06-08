@@ -6,25 +6,37 @@ using System.Xml;
 namespace Aiml {
 	public partial class TemplateNode {
 		/// <summary>
-		///     Returns the current time.
+		///     <para>Returns the current time.</para>
 		/// </summary>
 		/// <remarks>
-		///     If no format is specified, a system-dependent default format is used.
-		///     This element supports four properties:
-		///         format
-		///             Specifies the format of the output using a format string for the UNIX strftime function.
-		///             See http://linux.die.net/man/3/strftime for more information.
-		///         jformat
-		///             Specifies the format of the output using a format string according to the Java Simple Date Format specification.
-		///             See http://docs.oracle.com/javase/1.4.2/docs/api/java/text/SimpleDateFormat.html for more information.
-		///             Only one of format and jformat should be present.
-		///         locale
-		///             Specifies the locale that should be used to format the time as an ISO language/country code pair. The default is en_US.
-		///         timezone
-		///             Specifies the timezone for which the time should be returned, as a number of hours ahead of UTC.
-		///     This element has no content.
-		///     This element is defined by the AIML 1.1 specification and extended by the AIML 2.0 specification.
+		///		<para>This element has the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>format</c></term>
+		///				<description>the format of the output using a format string for the UNIX <c>strftime</c> function.
+		///					See http://linux.die.net/man/3/strftime for more information.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>jformat</c></term>
+		///				<description>the format of the output using a Java Simple Date Format format string.
+		///					See https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html for more information.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>locale</c></term>
+		///				<description>the locale that should be used to format the time as an ISO language/country code pair.
+		///					If omitted, the bot's configured culture is used.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>timezone</c></term>
+		///				<description>the time zone offset for which the time should be returned, as an integer number of hours ahead of UTC.
+		///					If omitted, the local time zone is used.</description>
+		///			</item>
+		///		</list>
+		///		<para>Up to one of <c>format</c> or <c>jformat</c> should be specified. If both are omitted, system-dependent default format is used.</para>
+		///     <para>This element has no content.</para>
+		///     <para>This element is defined by the AIML 1.1 specification and extended by the AIML 2.0 specification.</para>
 		/// </remarks>
+		/// <seealso cref="Interval"/>
 		public sealed class Date : TemplateNode {
 			public TemplateElementCollection Format { get; set; }
 			public TemplateElementCollection JFormat { get; set; }

@@ -8,12 +8,26 @@ namespace Aiml {
 		///     Sends the content to an external service and returns the response from the service.
 		/// </summary>
 		/// <remarks>
-		///     The 'service' attribute specifies the name of the external service to use.
-		///     The content is evaluated and then sent to the external service.
-		///     If no service was found or the service throws an exception, a warning will be raised and the default reply will be returned.
-		///     The default reply is the text in the 'default' attribute, or if this attribute does not exist, the SRAIXFAILED category is queried.
-		///     This element is defined by the AIML 2.0 specification.
+		///		<para>This element has the following attributes:</para>
+		///		<list type="table">
+		///			<item>
+		///				<term><c>service</c></term>
+		///				<description>the name of the external service to use, from <see cref="Aiml.Bot.SraixServices"/>.</description>
+		///			</item>
+		///			<item>
+		///				<term><c>default</c></term>
+		///				<description>returned if the service call fails.
+		///					If omitted, the <c>SRAIXFAILED</c> category is queried and two predicates are set:
+		///					<list type="bullet">
+		///						<item><term>SraixException</term><description>the exception type name.</description></item>
+		///						<item><term>SraixExceptionMessage</term><description>the exception message.</description></item>
+		///					</list>
+		///				</description>
+		///			</item>
+		///		</list>
+		///     <para>This element is defined by the AIML 2.0 specification. This implementation is non-standard.</para>
 		/// </remarks>
+		/// <seealso cref="Srai"/>
 		public sealed class SraiX : RecursiveTemplateTag {
 			public TemplateElementCollection ServiceName { get; }
 			public XmlAttributeCollection Attributes { get; }
