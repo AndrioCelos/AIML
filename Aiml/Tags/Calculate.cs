@@ -22,12 +22,12 @@ namespace Aiml {
 		///		<list type="table">
 		///			<item><term><c>abs(x)</c></term> <description>returns the absolute value of x.</description></item>
 		///			<item><term><c>acos(x)</c></term> <description>returns the angle whose cosine is x, in radians.</description></item>
-		///			<item><term><c>acosh(x)</c></term> <description>returns the angle whose hyperbolic cosine is x, in radians.</description></item>
+		///			<item><term><c>acosh(x)</c></term> <description>returns the angle whose hyperbolic cosine is x, in radians (unavailable in .NET Standard 2.0).</description></item>
 		///			<item><term><c>asin(x)</c></term> <description>returns the angle whose sine is x, in radians.</description></item>
-		///			<item><term><c>asinh(x)</c></term> <description>returns the angle whose hyperbolic sine is x, in radians.</description></item>
+		///			<item><term><c>asinh(x)</c></term> <description>returns the angle whose hyperbolic sine is x, in radians (unavailable in .NET Standard 2.0).</description></item>
 		///			<item><term><c>atan(x)</c></term> <description>returns the angle whose tangent is x, in radians.</description></item>
 		///			<item><term><c>atan(y, x)</c></term> <description>returns the angle whose cosine is y/x, in radians, taking into account quadrants and x = 0.</description></item>
-		///			<item><term><c>atanh(x)</c></term> <description>returns the angle whose hyperbolic tangent is x, in radians.</description></item>
+		///			<item><term><c>atanh(x)</c></term> <description>returns the angle whose hyperbolic tangent is x, in radians (unavailable in .NET Standard 2.0).</description></item>
 		///			<item><term><c>ceil(x)</c>, <c>ceiling(x)</c></term> <description>rounds x to the nearest integer upward.</description></item>
 		///			<item><term><c>cos(x)</c></term> <description>returns the cosine of x radians.</description></item>
 		///			<item><term><c>cosh(x)</c></term> <description>returns the hyperbolic cosine of x radians.</description></item>
@@ -143,12 +143,9 @@ namespace Aiml {
 								"e" => Math.E,
 								"abs" => Math.Abs(parameters[0]),
 								"acos" => Math.Acos(parameters[0]),
-								"acosh" => Math.Acosh(parameters[0]),
 								"asin" => Math.Asin(parameters[0]),
-								"asinh" => Math.Asinh(parameters[0]),
 								"atan" => parameters.Count > 1 ? Math.Atan2(parameters[0], parameters[1]) : Math.Atan(parameters[0]),
 								"atan2" => Math.Atan2(parameters[0], parameters[1]),
-								"atanh" => Math.Atanh(parameters[0]),
 								"ceiling" => Math.Ceiling(parameters[0]),
 								"ceil" => Math.Ceiling(parameters[0]),
 								"cos" => Math.Cos(parameters[0]),
@@ -171,6 +168,11 @@ namespace Aiml {
 								"tanh" => Math.Tanh(parameters[0]),
 								"truncate" => Math.Truncate(parameters[0]),
 								"fix" => Math.Truncate(parameters[0]),
+#if NETSTANDARD2_1
+								"acosh" => Math.Acosh(parameters[0]),
+								"asinh" => Math.Asinh(parameters[0]),
+								"atanh" => Math.Atanh(parameters[0]),
+#endif
 								_ => throw new FormatException()
 							};
 						} else
