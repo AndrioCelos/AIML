@@ -1,142 +1,204 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Text;
 using System.Xml;
 
-namespace Aiml {
-	public partial class TemplateNode {
-		/// <summary>
-		///     Returns one of a choice of child elements depending on the results of matching a predicate against a pattern.
-		/// </summary>
-		/// <remarks>
-		///     <para>This element has three forms:</para>
-		///     <list type="bullet">
-		///			<item>
-		///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
-		///				<description>
-		///					<para>If the value of the specified predicate or local variable matches the specified value, it returns its contents; otherwise it returns the empty string.</para>	
-		///				</description>
-		///			</item>
-		///			<item>
-		///				<term><c><![CDATA[<condition name='predicate'>]]></c> or <c><![CDATA[<condition var='variable'>]]></c></term>
-		///				<description>
-		///					<para>This form can only contain <c>li</c> elements as direct children.</para>
-		///					<para>The first <c>li</c> element that matches the value of the specified predicate or variable is returned.</para>	
-		///					<para>The last <c>li</c> element may lack a <c>value</c> attribute, in which case it will match by default if no earlier item matches.</para>
-		///				</description>
-		///			</item>
-		///			<item>
-		///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
-		///				<description>
-		///					<para>This form can only contain <c>li</c> elements as direct children.</para>
-		///					<para>The first <c>li</c> element whose specified predicate or variable matches its specified value is returned.</para>	
-		///					<para>The last <c>li</c> element may lack attributes, in which case it will match by default if no earlier item matches.</para>
-		///				</description>
-		///			</item>
-		///     </list>
-		///		<para>In each case, if the value is <c>*</c>, it instead checks whether the predicate or variable is bound to any value.</para>
-		///     <para>This element is defined by the AIML 1.1 specification.</para>
-		/// </remarks>
-		/// <seealso cref="Get"/><seealso cref="Random"/>
-		public sealed class Condition : TemplateNode {
-			private readonly li[] items;
-			public ReadOnlyCollection<li> Items { get; }
+namespace Aiml;
+public partial class TemplateNode {
+	/// <summary>Returns up to one of a choice of child elements depending on the results of matching a predicate against a pattern.</summary>
+	/// <remarks>
+	///		<para>This element has three forms:</para>
+	///		<list type="bullet">
+	///			<item>
+	///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
+	///				<description>
+	///					<para>If the value of the specified predicate or local variable matches the specified value, it returns its contents; otherwise it returns the empty string.</para>	
+	///				</description>
+	///			</item>
+	///			<item>
+	///				<term><c><![CDATA[<condition name='predicate'>]]></c> or <c><![CDATA[<condition var='variable'>]]></c></term>
+	///				<description>
+	///					<para>This form can only contain <c>li</c> elements as direct children.</para>
+	///					<para>The first <c>li</c> element that matches the value of the specified predicate or variable is returned.</para>	
+	///					<para>The last <c>li</c> element may lack a <c>value</c> attribute, in which case it will match by default if no earlier item matches.</para>
+	///				</description>
+	///			</item>
+	///			<item>
+	///				<term><c><![CDATA[<condition>]]></c></term>
+	///				<description>
+	///					<para>This form can only contain <c>li</c> elements as direct children.</para>
+	///					<para>The first <c>li</c> element whose specified predicate or variable matches its specified value is returned.</para>	
+	///					<para>The last <c>li</c> element may lack attributes, in which case it will match by default if no earlier item matches.</para>
+	///				</description>
+	///			</item>
+	///		</list>
+	///		<para>In each case, if the value is <c>*</c>, it instead checks whether the predicate or variable is bound to any value.</para>
+	///		<para>This element is defined by the AIML 1.1 specification.</para>
+	/// </remarks>
+	/// <seealso cref="Get"/><seealso cref="Random"/>
+	public sealed class Condition : TemplateNode {
+		private readonly Li[] items;
+		public ReadOnlyCollection<Li> Items { get; }
 
-			public Condition(TemplateElementCollection key, bool localVar, TemplateElementCollection value, TemplateElementCollection children) : this(key, localVar, new li[] { new li(value, children) }) { }
-			public Condition(TemplateElementCollection? key, bool localVar, li[] items) {
-				if (items.Length == 0) throw new AimlException("Condition element must contain at least one item.");
-				foreach (var item in items) {
-					if (item.Key == null && item.Value != null) {
-						item.Key = key;
-						item.LocalVar = localVar;
-					}
+		public Condition(TemplateElementCollection key, bool localVar, TemplateElementCollection value, TemplateElementCollection children) : this(key, localVar, new Li[] { new Li(value, children) }) { }
+		public Condition(TemplateElementCollection? key, bool localVar, Li[] items) {
+			if (items.Length == 0) throw new AimlException("Condition element must contain at least one item.");
+			foreach (var item in items) {
+				if (item.Key == null && item.Value != null) {
+					item.Key = key;
+					item.LocalVar = localVar;
 				}
-				this.items = items;
-				this.Items = new ReadOnlyCollection<li>(items);
 			}
-			public Condition(li[] items) : this(null, false, items) { }
+			this.items = items;
+			this.Items = new ReadOnlyCollection<Li>(items);
+		}
+		public Condition(Li[] items) : this(null, false, items) { }
 
-			public li? Pick(RequestProcess process) {
-				string value;
+		public Li? Pick(RequestProcess process) {
+			string value;
 
-				foreach (var item in this.items) {
-					string? key = item.Key?.Evaluate(process);
-					string? checkValue = item.Value?.Evaluate(process);
+			foreach (var item in this.items) {
+				var key = item.Key?.Evaluate(process);
+				var checkValue = item.Value?.Evaluate(process);
 
-					Dictionary<string, string> dictionary;
-					if (item.LocalVar) dictionary = process.Variables;
-					else dictionary = process.User.Predicates;
-
-					if (key != null && checkValue != null) {
-						if (checkValue == "*") {
-							// '*' is a match if the predicate is bound at all.
-							if (item.LocalVar) {
-								if (process.Variables.TryGetValue(key, out value)) {
-									process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches *.");
-									return item;
-								}
-							} else {
-								if (process.User.Predicates.TryGetValue(key, out value)) {
-									process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches *.");
-									return item;
-								}
+				var dictionary = item.LocalVar ? process.Variables : process.User.Predicates;
+				if (key != null && checkValue != null) {
+					if (checkValue == "*") {
+						// '*' is a match if the predicate is bound at all.
+						if (item.LocalVar) {
+							if (process.Variables.TryGetValue(key, out value)) {
+								process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches *.");
+								return item;
 							}
 						} else {
-							if (item.LocalVar) {
-								if (process.Bot.Config.StringComparer.Equals(process.GetVariable(key), checkValue)) {
-									process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches {checkValue}.");
-									return item;
-								}
-							} else {
-								if (process.Bot.Config.StringComparer.Equals(checkValue, process.User.GetPredicate(key))) {
-									process.Log(LogLevel.Diagnostic, $"In element <condition>: {(item.LocalVar ? "Local variable" : "Predicate")} {key} matches {checkValue}.");
-									return item;
-								}
+							if (process.User.Predicates.TryGetValue(key, out value)) {
+								process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches *.");
+								return item;
 							}
 						}
-						// No match; keep looking.
-						process.Log(LogLevel.Diagnostic, $"In element <condition>: {(item.LocalVar ? "Local variable" : "Predicate")} {key} does not match {checkValue}.");
-					} else if (key == null && checkValue == null) {
-						// Default case.
-						return item;
 					} else {
-						process.Log(LogLevel.Warning, "In element <condition>: Missing name, var or value attribute in <li>.");
+						if (item.LocalVar) {
+							if (process.Bot.Config.StringComparer.Equals(process.GetVariable(key), checkValue)) {
+								process.Log(LogLevel.Diagnostic, $"In element <condition>: Local variable {key} matches {checkValue}.");
+								return item;
+							}
+						} else {
+							if (process.Bot.Config.StringComparer.Equals(checkValue, process.User.GetPredicate(key))) {
+								process.Log(LogLevel.Diagnostic, $"In element <condition>: {(item.LocalVar ? "Local variable" : "Predicate")} {key} matches {checkValue}.");
+								return item;
+							}
+						}
 					}
+					// No match; keep looking.
+					process.Log(LogLevel.Diagnostic, $"In element <condition>: {(item.LocalVar ? "Local variable" : "Predicate")} {key} does not match {checkValue}.");
+				} else if (key == null && checkValue == null) {
+					// Default case.
+					return item;
+				} else {
+					process.Log(LogLevel.Warning, "In element <condition>: Missing name, var or value attribute in <li>.");
+				}
+			}
+
+			return null;
+		}
+
+		public override string Evaluate(RequestProcess process) {
+			var builder = new StringBuilder();
+
+			Li item; var loops = 0;
+			do {
+				++loops;
+				if (loops > process.Bot.Config.LoopLimit) {
+					process.Log(LogLevel.Warning, "Loop limit exceeded. User: " + process.User.ID + "; path: \"" + process.Path + "\"");
+					throw new LoopLimitException();
 				}
 
-				return null;
+				item = this.Pick(process);
+				if (item == null) return string.Empty;
+				builder.Append(item.Children?.Evaluate(process));
+			} while (item.Children != null && item.Children.Loop);
+
+			return builder.ToString();
+		}
+
+		public static Condition FromXml(XmlNode node, AimlLoader loader) {
+			// Search for XML attributes.
+			XmlAttribute attribute;
+
+			TemplateElementCollection? name = null;
+			TemplateElementCollection? value = null;
+			var localVar = false;
+			var children = new List<TemplateNode>();
+			var items = new List<Li>();
+
+			attribute = node.Attributes["name"];
+			if (attribute != null) name = new TemplateElementCollection(attribute.Value);
+			attribute = node.Attributes["var"];
+			if (attribute != null) {
+				name = new TemplateElementCollection(attribute.Value);
+				localVar = true;
+			}
+			attribute = node.Attributes["value"];
+			if (attribute != null) value = new TemplateElementCollection(attribute.Value);
+
+			// Search for properties in elements.
+			foreach (XmlNode node2 in node.ChildNodes) {
+				if (node2.NodeType == XmlNodeType.Whitespace) {
+					children.Add(new TemplateText(" "));
+				} else if (node2.NodeType is XmlNodeType.Text or XmlNodeType.SignificantWhitespace) {
+					children.Add(new TemplateText(node2.InnerText));
+				} else if (node2.NodeType == XmlNodeType.Element) {
+						if (node2.Name.Equals("name", StringComparison.InvariantCultureIgnoreCase)) {
+							name = TemplateElementCollection.FromXml(node2, loader);
+							localVar = false;
+						} else if (node2.Name.Equals("var", StringComparison.InvariantCultureIgnoreCase)) {
+							name = TemplateElementCollection.FromXml(node2, loader);
+							localVar = true;
+						} else if (node2.Name.Equals("value", StringComparison.InvariantCultureIgnoreCase))
+							value = TemplateElementCollection.FromXml(node2, loader);
+						else if (node2.Name.Equals("li", StringComparison.InvariantCultureIgnoreCase))
+							items.Add(Li.Parse(node2, loader));
+						else
+							children.Add(loader.ParseElement(node2));
+				}
 			}
 
-			public override string Evaluate(RequestProcess process) {
-				StringBuilder builder = new StringBuilder();
+			if (items.Count == 0)
+				return name != null && value != null
+					? new Condition(name, localVar, value, new TemplateElementCollection(children.ToArray()))
+					: throw new AimlException("<condition> tag is missing attributes or <li> tags.");
 
-				li item; int loops = 0;
-				do {
-					++loops;
-					if (loops > process.Bot.Config.LoopLimit) {
-						process.Log(LogLevel.Warning, "Loop limit exceeded. User: " + process.User.ID + "; path: \"" + process.Path + "\"");
-						throw new LoopLimitException();
+			if (items.Any(i => i.Value == null)) {
+				var infiniteLoop = true;
+				foreach (var item in items) {
+					if (item.Children == null || !item.Children.Loop) {
+						infiniteLoop = false;
+						break;
 					}
-
-					item = this.Pick(process);
-					if (item == null) return string.Empty;
-					builder.Append(item.Children?.Evaluate(process));
-				} while (item.Children != null && item.Children.Loop);
-
-				return builder.ToString();
+				}
+				if (infiniteLoop) throw new AimlException("Infinite loop: every <li> has a loop (and there is a default <li>).");
 			}
 
-			public static Condition FromXml(XmlNode node, AimlLoader loader) {
+			return new Condition(name, localVar, items.ToArray());
+		}
+
+		public class Li(TemplateElementCollection key, bool localVar, TemplateElementCollection value, TemplateElementCollection children) : RecursiveTemplateTag(children) {
+			public TemplateElementCollection? Key { get; internal set; } = key;
+			public TemplateElementCollection? Value { get; } = value;
+			public bool LocalVar { get; internal set; } = localVar;
+
+			public Li(TemplateElementCollection value, TemplateElementCollection children) : this(null, false, value, children) { }
+			public Li(TemplateElementCollection children) : this(null, false, null, children) { }
+
+			public override string Evaluate(RequestProcess process) => this.Children?.Evaluate(process) ?? "";
+
+			public static Li Parse(XmlNode node, AimlLoader loader) {
 				// Search for XML attributes.
 				XmlAttribute attribute;
 
-				TemplateElementCollection? name = null;
-				TemplateElementCollection? value = null;
-				bool localVar = false;
-				List<TemplateNode> children = new List<TemplateNode>();
-				List<li> items = new List<li>();
+				TemplateElementCollection name = null;
+				TemplateElementCollection value = null;
+				var localVar = false;
+				var children = new List<TemplateNode>();
 
 				attribute = node.Attributes["name"];
 				if (attribute != null) name = new TemplateElementCollection(attribute.Value);
@@ -152,107 +214,26 @@ namespace Aiml {
 				foreach (XmlNode node2 in node.ChildNodes) {
 					if (node2.NodeType == XmlNodeType.Whitespace) {
 						children.Add(new TemplateText(" "));
-					} else if (node2.NodeType == XmlNodeType.Text || node2.NodeType == XmlNodeType.SignificantWhitespace) {
+					} else if (node2.NodeType is XmlNodeType.Text or XmlNodeType.SignificantWhitespace) {
 						children.Add(new TemplateText(node2.InnerText));
 					} else if (node2.NodeType == XmlNodeType.Element) {
-							if (node2.Name.Equals("name", StringComparison.InvariantCultureIgnoreCase)) {
-								name = TemplateElementCollection.FromXml(node2, loader);
-								localVar = false;
-							} else if (node2.Name.Equals("var", StringComparison.InvariantCultureIgnoreCase)) {
-								name = TemplateElementCollection.FromXml(node2, loader);
-								localVar = true;
-							} else if (node2.Name.Equals("value", StringComparison.InvariantCultureIgnoreCase))
-								value = TemplateElementCollection.FromXml(node2, loader);
-							else if (node2.Name.Equals("li", StringComparison.InvariantCultureIgnoreCase))
-								items.Add(li.Parse(node2, loader));
-							else
-								children.Add(loader.ParseElement(node2));
+						if (node2.Name.Equals("name", StringComparison.InvariantCultureIgnoreCase)) {
+							name = TemplateElementCollection.FromXml(node2, loader);
+							localVar = false;
+						} else if (node2.Name.Equals("var", StringComparison.InvariantCultureIgnoreCase)) {
+							name = TemplateElementCollection.FromXml(node2, loader);
+							localVar = true;
+						} else if (node2.Name.Equals("value", StringComparison.InvariantCultureIgnoreCase))
+							value = TemplateElementCollection.FromXml(node2, loader);
+						else
+							children.Add(loader.ParseElement(node2));
 					}
 				}
 
-				if (items.Count == 0) {
-					if (name == null || value == null) throw new AimlException("<condition> tag is missing attributes or <li> tags.");
-					return new Condition(name, localVar, value, new TemplateElementCollection(children.ToArray()));
-				}
-
-				if (items.Any(i => i.Value == null)) {
-					bool infiniteLoop = true;
-					foreach (var item in items) {
-						if (item.Children == null || !item.Children.Loop) {
-							infiniteLoop = false;
-							break;
-						}
-					}
-					if (infiniteLoop) throw new AimlException("Infinite loop: every <li> has a loop (and there is a default <li>).");
-				}
-
-				return new Condition(name, localVar, items.ToArray());
+				return new Li(name, localVar, value, new TemplateElementCollection(children.ToArray()));
 			}
 
-			public class li : RecursiveTemplateTag {
-				public TemplateElementCollection? Key { get; internal set; }
-				public TemplateElementCollection? Value { get; }
-				public bool LocalVar { get; internal set; }
-
-				public li(TemplateElementCollection key, bool localVar, TemplateElementCollection value, TemplateElementCollection children) : base(children) {
-					this.Key = key;
-					this.Value = value;
-					this.LocalVar = localVar;
-				}
-				public li(TemplateElementCollection value, TemplateElementCollection children) : this(null, false, value, children) { }
-				public li(TemplateElementCollection children) : this(null, false, null, children) { }
-
-				public override string Evaluate(RequestProcess process) {
-					return this.Children?.Evaluate(process) ?? "";
-				}
-
-				public static TemplateNode.Condition.li Parse(XmlNode node, AimlLoader loader) {
-					// Search for XML attributes.
-					XmlAttribute attribute;
-
-					TemplateElementCollection name = null;
-					TemplateElementCollection value = null;
-					bool localVar = false;
-					List<TemplateNode> children = new List<TemplateNode>();
-
-					attribute = node.Attributes["name"];
-					if (attribute != null) name = new TemplateElementCollection(attribute.Value);
-					attribute = node.Attributes["var"];
-					if (attribute != null) {
-						name = new TemplateElementCollection(attribute.Value);
-						localVar = true;
-					}
-					attribute = node.Attributes["value"];
-					if (attribute != null) value = new TemplateElementCollection(attribute.Value);
-
-					// Search for properties in elements.
-					foreach (XmlNode node2 in node.ChildNodes) {
-						if (node2.NodeType == XmlNodeType.Whitespace) {
-							children.Add(new TemplateText(" "));
-						} else if (node2.NodeType == XmlNodeType.Text || node2.NodeType == XmlNodeType.SignificantWhitespace) {
-							children.Add(new TemplateText(node2.InnerText));
-						} else if (node2.NodeType == XmlNodeType.Element) {
-							if (node2.Name.Equals("name", StringComparison.InvariantCultureIgnoreCase)) {
-								name = TemplateElementCollection.FromXml(node2, loader);
-								localVar = false;
-							} else if (node2.Name.Equals("var", StringComparison.InvariantCultureIgnoreCase)) {
-								name = TemplateElementCollection.FromXml(node2, loader);
-								localVar = true;
-							} else if (node2.Name.Equals("value", StringComparison.InvariantCultureIgnoreCase))
-								value = TemplateElementCollection.FromXml(node2, loader);
-							else
-								children.Add(loader.ParseElement(node2));
-						}
-					}
-
-					return new li(name, localVar, value, new TemplateElementCollection(children.ToArray()));
-				}
-
-				public override string ToString() {
-					return "<li>" + this.Children.ToString() + "</li>";
-				}
-			}
-
+			public override string ToString() => "<li>" + this.Children.ToString() + "</li>";
 		}
 	}
 }

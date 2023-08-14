@@ -2,12 +2,8 @@
 using System.Runtime.Loader;
 
 namespace AimlVoice;
-internal class PluginLoadContext : AssemblyLoadContext {
-	private readonly AssemblyDependencyResolver resolver;
-
-	public PluginLoadContext(string pluginPath) {
-		resolver = new AssemblyDependencyResolver(pluginPath);
-	}
+internal class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
+	private readonly AssemblyDependencyResolver resolver = new(pluginPath);
 
 	protected override Assembly? Load(AssemblyName assemblyName) {
 		// Check whether the assembly is already loaded (possibly another plugin assembly).
@@ -16,7 +12,7 @@ internal class PluginLoadContext : AssemblyLoadContext {
 				return a;
 		}
 
-		var assemblyPath = resolver.ResolveAssemblyToPath(assemblyName);
+		var assemblyPath = this.resolver.ResolveAssemblyToPath(assemblyName);
 		if (assemblyPath != null)
 			return this.LoadFromAssemblyPath(assemblyPath);
 
@@ -44,7 +40,7 @@ internal class PluginLoadContext : AssemblyLoadContext {
 	}
 
 	protected override IntPtr LoadUnmanagedDll(string unmanagedDllName) {
-		var libraryPath = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-		return libraryPath != null ? LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
+		var libraryPath = this.resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+		return libraryPath != null ? this.LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
 	}
 }

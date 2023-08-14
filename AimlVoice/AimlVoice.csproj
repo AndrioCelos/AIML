@@ -2,10 +2,14 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFramework>net6.0-windows</TargetFramework>
     <LangVersion>preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>2.0.0</Version>
+    <Authors>Andrio Celos</Authors>
+    <Company></Company>
+    <Copyright>© 2019-2023 $(Authors)</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,12 +18,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Aiml\Aiml.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="app.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

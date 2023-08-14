@@ -1,7 +1,6 @@
-namespace Aiml {
-	internal enum MatchState {
-		Message,
-		Topic,
-		That,
-	}
+namespace Aiml; 
+internal enum MatchState {
+	Message,
+	Topic,
+	That,
 }

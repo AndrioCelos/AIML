@@ -1,9 +1,8 @@
-﻿namespace Aiml {
-	public enum LogLevel {
-		Diagnostic,
-		Chat,
-		Info,
-		Gossip,
-		Warning
-	}
+﻿namespace Aiml; 
+public enum LogLevel {
+	Diagnostic,
+	Chat,
+	Info,
+	Gossip,
+	Warning
 }

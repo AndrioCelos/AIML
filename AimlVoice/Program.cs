@@ -1,6 +1,4 @@
-﻿#nullable enable
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Speech.Recognition;
 using System.Speech.Recognition.SrgsGrammar;
@@ -26,25 +24,25 @@ public class Program {
 	private static readonly Queue<SpeechQueueItem> speechQueue = new();
 
 	public static Dictionary<string, Action<XmlElement>> OobHandlers { get; } = new(StringComparer.CurrentCultureIgnoreCase) {
-		{ "SetGrammar", oobSetGrammar },
-		{ "EnableGrammar", oobEnableGrammar },
-		{ "DisableGrammar", oobDisableGrammar },
-		{ "SetPartialInput", oobPartialInput }
+		{ "SetGrammar", OobSetGrammar },
+		{ "EnableGrammar", OobEnableGrammar },
+		{ "DisableGrammar", OobDisableGrammar },
+		{ "SetPartialInput", OobPartialInput }
 	};
 	public static Dictionary<string, Action<string>> OldOobHandlers { get; } = new(StringComparer.CurrentCultureIgnoreCase) {
-		{ "SetGrammar", oobSetGrammar },
-		{ "EnableGrammar", oobEnableGrammar },
-		{ "DisableGrammar", oobDisableGrammar },
-		{ "SetPartialInput", oobPartialInput }
+		{ "SetGrammar", OobSetGrammar },
+		{ "EnableGrammar", OobEnableGrammar },
+		{ "DisableGrammar", OobDisableGrammar },
+		{ "SetPartialInput", OobPartialInput }
 	};
 
 	static int Main(string[] args) {
-		bool switches = true; string? botPath = null; var defaultGrammarPath = new List<string>();
+		var switches = true; string? botPath = null; var defaultGrammarPath = new List<string>();
 		string? voice = null; var extensionPaths = new List<string>();
 		int rate = 0, volume = 100;
-		bool sr = true;
+		var sr = true;
 
-		for (int i = 0; i < args.Length; ++i) {
+		for (var i = 0; i < args.Length; ++i) {
 			var s = args[i];
 			if (switches && s.StartsWith("-")) {
 				switch (s) {
@@ -173,14 +171,14 @@ public class Program {
 				Console.ForegroundColor = ConsoleColor.DarkGreen;
 				Console.WriteLine("* OOB START");
 				Console.ResetColor();
-				sendInput("OOB START");
+				SendInput("OOB START");
 			}
 
 			Console.Write("> ");
 			while (true) {
 				var message = Console.ReadLine();
 				if (message == null) return 0;
-				sendInput(message);
+				SendInput(message);
 				Console.Write("> ");
 			}
 		} else {
@@ -220,14 +218,14 @@ public class Program {
 					Console.ForegroundColor = ConsoleColor.DarkGreen;
 					Console.WriteLine("* OOB START");
 					Console.ResetColor();
-					sendInput("OOB START");
+					SendInput("OOB START");
 				}
 
 				Console.Write("> ");
 				while (true) {
 					var message = Console.ReadLine();
 					if (message == null) return 0;
-					sendInput(message);
+					SendInput(message);
 					Console.Write("> ");
 				}
 			}
@@ -241,18 +239,16 @@ public class Program {
 		} catch (InvalidOperationException) { }
 	}
 
-	private static void Recognizer_RecognizerUpdateReached(object? sender, RecognizerUpdateReachedEventArgs e) {
-		Console.WriteLine("OK");
-	}
+	private static void Recognizer_RecognizerUpdateReached(object? sender, RecognizerUpdateReachedEventArgs e) => Console.WriteLine("OK");
 
-	private static void clearMessage() {
+	private static void ClearMessage() {
 		Console.Write(new string(' ', progressMessage.Length));
 		Console.CursorLeft = 2;
 		progressMessage = "";
 	}
 
-	private static void writeMessage(string message) {
-		clearMessage();
+	private static void WriteMessage(string message) {
+		ClearMessage();
 		Console.Write(message);
 		progressMessage = message;
 		Console.CursorLeft = 2;
@@ -260,7 +256,7 @@ public class Program {
 
 	private static void Recognizer_SpeechHypothesized(object? sender, SpeechHypothesizedEventArgs e) {
 		Console.ForegroundColor = ConsoleColor.DarkMagenta;
-		writeMessage($"({e.Result.Text} ... {e.Result.Confidence})");
+		WriteMessage($"({e.Result.Text} ... {e.Result.Confidence})");
 		Console.ResetColor();
 
 		if (partialInput != 0 && (partialInput != PartialInputMode.On || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3)) && e.Result.Confidence >= 0.25) {
@@ -281,18 +277,18 @@ public class Program {
 			Console.WriteLine(e.Result.Alternates[0].Text + "    ");
 			Console.ResetColor();
 			if (partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3))
-				sendInput(e.Result.Alternates[0].Text);
+				SendInput(e.Result.Alternates[0].Text);
 		} else {
-			writeMessage(string.Join(" ", e.Result.Alternates.Select(a => $"({a.Text} ...? {a.Confidence})")));
+			WriteMessage(string.Join(" ", e.Result.Alternates.Select(a => $"({a.Text} ...? {a.Confidence})")));
 			Console.ResetColor();
 		}
 	}
 
-	public static void sendInput(string input) {
+	public static void SendInput(string input) {
 		var trace = false;
 		if (input.StartsWith(".trace ")) {
 			trace = true;
-			input = input.Substring(7);
+			input = input[7..];
 		}
 		if (repliesByText.TryGetValue(input, out var reply)) input = reply.Postback;
 		var response = bot.Chat(new Request(input, user, bot), trace);
@@ -315,7 +311,9 @@ public class Program {
 
 			foreach (XmlNode node in xmlDocument.DocumentElement!.ChildNodes) {
 				switch (node.NodeType) {
-					case XmlNodeType.Text: case XmlNodeType.SignificantWhitespace: case XmlNodeType.CDATA:
+					case XmlNodeType.Text:
+					case XmlNodeType.SignificantWhitespace:
+					case XmlNodeType.CDATA:
 						responseBuilder.Append(node.InnerText);
 						if (!ssmlOverride) builder.AppendText(node.InnerText);
 						break;
@@ -376,7 +374,9 @@ public class Program {
 								string? postback = null;
 								foreach (XmlNode node2 in node.ChildNodes) {
 									switch (node2.NodeType) {
-										case XmlNodeType.Text: case XmlNodeType.SignificantWhitespace: case XmlNodeType.CDATA:
+										case XmlNodeType.Text:
+										case XmlNodeType.SignificantWhitespace:
+										case XmlNodeType.CDATA:
 											textBuilder.Append(node2.InnerText);
 											break;
 										case XmlNodeType.Whitespace:
@@ -442,9 +442,9 @@ public class Program {
 		}
 	}
 
-	private static void oobPartialInput(XmlElement element)
-		=> oobPartialInput(element.InnerText);
-	private static void oobPartialInput(string text) {
+	private static void OobPartialInput(XmlElement element)
+		=> OobPartialInput(element.InnerText);
+	private static void OobPartialInput(string text) {
 		switch (text.Trim().ToLowerInvariant()) {
 			case "off": case "false": case "0": partialInput = PartialInputMode.Off; break;
 			case "on": case "true": case "1": partialInput = PartialInputMode.On; break;
@@ -454,9 +454,9 @@ public class Program {
 		Console.WriteLine($"Partial input is {partialInput}.");
 	}
 
-	private static void oobSetGrammar(XmlElement element)
-		=> oobSetGrammar(element.InnerText);
-	private static void oobSetGrammar(string text) {
+	private static void OobSetGrammar(XmlElement element)
+		=> OobSetGrammar(element.InnerText);
+	private static void OobSetGrammar(string text) {
 		if (!enabledGrammarPaths.Contains(text)) {
 			if (grammars.TryGetValue(text, out var grammar)) {
 				Console.WriteLine($"Switching to grammar '{text}'");
@@ -470,9 +470,9 @@ public class Program {
 		}
 	}
 
-	private static void oobDisableGrammar(XmlElement element)
-		=> oobDisableGrammar(element.InnerText);
-	private static void oobDisableGrammar(string text) {
+	private static void OobDisableGrammar(XmlElement element)
+		=> OobDisableGrammar(element.InnerText);
+	private static void OobDisableGrammar(string text) {
 		if (enabledGrammarPaths.Contains(text)) {
 			if (enabledGrammarPaths.Count == 1) {
 				Console.WriteLine($"Refusing to disable the last enabled grammar '{text}'");
@@ -484,9 +484,9 @@ public class Program {
 				Console.WriteLine($"Could not find requested grammar '{text}'.");
 		}
 	}
-	private static void oobEnableGrammar(XmlElement element)
-		=> oobEnableGrammar(element.InnerText);
-	private static void oobEnableGrammar(string text) {
+	private static void OobEnableGrammar(XmlElement element)
+		=> OobEnableGrammar(element.InnerText);
+	private static void OobEnableGrammar(string text) {
 		if (!enabledGrammarPaths.Contains(text)) {
 			if (grammars.TryGetValue(text, out var grammar)) {
 				Console.WriteLine($"Enabling grammar '{text}'");
@@ -513,19 +513,14 @@ public class Program {
 		Console.WriteLine(e.Result.Text + "     ");
 		Console.ResetColor();
 		if (partialInput == PartialInputMode.Continuous || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3))
-			sendInput(e.Result.Text);
+			SendInput(e.Result.Text);
 		Console.Write("> ");
 	}
 }
 
-public class SpeechQueueItem {
-	public Prompt Prompt { get; }
-	public bool Important { get; }
-
-	public SpeechQueueItem(Prompt prompt, bool important) {
-		this.Prompt = prompt;
-		this.Important = important;
-	}
+public class SpeechQueueItem(Prompt prompt, bool important) {
+	public Prompt Prompt { get; } = prompt;
+	public bool Important { get; } = important;
 }
 
 public enum PartialInputMode {

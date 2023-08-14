@@ -1,80 +1,70 @@
-using System;
 using System.Diagnostics;
-using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml;
 
-namespace Aiml {
-	public partial class TemplateNode {
-		/// <summary>
-		///     Sends the content as a command to a system command interpreter and returns the output of the command via standard output and standard error.
-		/// </summary>
-		/// <remarks>
-		///		<para>The command interpreter used depends on the platform. The currently supported platforms are as follows:</para>
-		///		<list type="table">
-		///			<listheader>
-		///				<term>Platform</term>
-		///				<description>Command interpreter</description>
-		///			</listheader>
-		///			<item>
-		///				<term>Windows</term>
-		///				<description><c>cmd.exe /Q /D /C "command"</c></description>
-		///			</item>
-		///			<item>
-		///				<term>UNIX</term>
-		///				<description><c>/bin/sh command</c></description>
-		///			</item>
-		///		</list>
-		///     <para>This element is defined by the AIML 1.1 specification.</para>
-		/// </remarks>
-		/// <seealso cref="SraiX"/>
-		public sealed class System : TemplateNode {
-			public TemplateElementCollection Command { get; private set; }
+namespace Aiml;
+public partial class TemplateNode {
+	/// <summary>Sends the content as a command to a system command interpreter and returns the output of the command via standard output.</summary>
+	/// <remarks>
+	///		<para>The command interpreter used depends on the platform. The currently supported platforms are as follows:</para>
+	///		<list type="table">
+	///			<listheader>
+	///				<term>Platform</term>
+	///				<description>Command interpreter</description>
+	///			</listheader>
+	///			<item>
+	///				<term>Windows</term>
+	///				<description><c>cmd.exe /Q /D /C "command"</c></description>
+	///			</item>
+	///			<item>
+	///				<term>UNIX</term>
+	///				<description><c>/bin/sh command</c></description>
+	///			</item>
+	///		</list>
+	///		<para>This element is defined by the AIML 1.1 specification.</para>
+	/// </remarks>
+	/// <seealso cref="SraiX"/>
+	public sealed class System(TemplateElementCollection command) : TemplateNode {
+		public TemplateElementCollection Command { get; private set; } = command;
 
-			public System(TemplateElementCollection command) {
-				this.Command = command;
-			}
+		public override string Evaluate(RequestProcess process) {
+			var command = this.Command.Evaluate(process);
 
-			public override string Evaluate(RequestProcess process) {
-				string command = this.Command.Evaluate(process);
+			var process2 = new Process();
+			if (Environment.OSVersion.Platform < PlatformID.Unix) {
+				// Windows
+				process2.StartInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/Q /D /C \"" +
+					Regex.Replace(command, @"[/\\:*?""<>^]", "^$0") + "\"");
+				//    /C string   Carries out the command specified by string and then terminates.
+				//    /Q          Turns echo off.
+				//    /D          Disable execution of AutoRun commands from registry (see 'CMD /?').
+			} else if (Environment.OSVersion.Platform == PlatformID.Unix) {
+				// UNIX
+				process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "bin", "sh"),
+					command.Replace(@"\", @"\\").Replace("\"", "\\\""));
+			} else
+				throw new PlatformNotSupportedException($"The system element is not supported on {Environment.OSVersion.Platform}.");
 
-				Process process2 = new Process();
-				if (Environment.OSVersion.Platform < PlatformID.Unix) {
-					// Windows
-					process2.StartInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/Q /D /C \"" +
-						Regex.Replace(command, @"[/\\:*?""<>^]", "^$0") + "\"");
-					//    /C string   Carries out the command specified by string and then terminates.
-					//    /Q          Turns echo off.
-					//    /D          Disable execution of AutoRun commands from registry (see 'CMD /?').
-				} else if (Environment.OSVersion.Platform == PlatformID.Unix) {
-					// UNIX
-					process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "bin", "sh"),
-						command.Replace(@"\", @"\\").Replace("\"", "\\\""));
-				}
-				process2.StartInfo.UseShellExecute = false;
-				process2.StartInfo.RedirectStandardOutput = true;
-				process2.StartInfo.RedirectStandardError = true;
+			process2.StartInfo.UseShellExecute = false;
+			process2.StartInfo.RedirectStandardOutput = true;
+			process2.StartInfo.RedirectStandardError = true;
 
-				process.Log(LogLevel.Diagnostic, $"In element <system>: executing {process2.StartInfo.FileName} {process2.StartInfo.Arguments}");
+			process.Log(LogLevel.Diagnostic, $"In element <system>: executing {process2.StartInfo.FileName} {process2.StartInfo.Arguments}");
 
-				process2.Start();
+			process2.Start();
 
-				string output = process2.StandardOutput.ReadToEnd();
-				string output2 = process2.StandardError.ReadToEnd();
-				process2.WaitForExit((int) process.Bot.Config.Timeout);
+			var output = process2.StandardOutput.ReadToEnd();
+			process2.StandardError.ReadToEnd();
+			process2.WaitForExit((int) process.Bot.Config.Timeout);
 
-				if (!process2.HasExited)
-					process.Log(LogLevel.Diagnostic, $"In element <system>: the process timed out.");
-				else if (process2.ExitCode != 0)
-					process.Log(LogLevel.Diagnostic, $"In element <system>: the process exited with code {process2.ExitCode}.");
+			if (!process2.HasExited)
+				process.Log(LogLevel.Diagnostic, $"In element <system>: the process timed out.");
+			else if (process2.ExitCode != 0)
+				process.Log(LogLevel.Diagnostic, $"In element <system>: the process exited with code {process2.ExitCode}.");
 
-				return output;
-			}
-
-			public static System FromXml(XmlNode node, AimlLoader loader) {
-				return new System(TemplateElementCollection.FromXml(node, loader));
-			}
-
+			return output;
 		}
+
+		public static System FromXml(XmlNode node, AimlLoader loader) => new(TemplateElementCollection.FromXml(node, loader));
 	}
 }
