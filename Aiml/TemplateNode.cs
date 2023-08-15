@@ -5,12 +5,8 @@ using System.Xml;
 
 namespace Aiml;
 /// <summary>Represents an AIML template-side node.</summary>
-public abstract partial class TemplateNode {
-	/// <summary>When overridden, returns the value of this tag.</summary>
-	/// <param name="subRequest">The sub-request for which this tag is being evaluated.</param>
-	/// <param name="response">The response being built.</param>
-	/// <param name="thinking">Indicates whether we are inside a <code>think</code> template element.</param>
-	/// <returns>The text that should replace this tag.</returns>
+public abstract class TemplateNode {
+	/// <summary>When overridden, returns the evaluated content of this node.</summary>
 	public abstract string Evaluate(RequestProcess process);
 }
 
@@ -19,21 +15,27 @@ public abstract class RecursiveTemplateTag(TemplateElementCollection? children) 
 	public TemplateElementCollection? Children { get; } = children;
 
 	public string EvaluateChildren(RequestProcess process) => this.Children?.Evaluate(process) ?? "";
+	public string EvaluateChildrenOrStar(RequestProcess process)
+		=> this.Children is not null && !this.Children.IsEmpty ? this.Children.Evaluate(process)
+			: process.star.Count > 0 ? process.star[0] : process.Bot.Config.DefaultWildcard;
+
+	public override string ToString() => $"<{this.GetType().Name.ToLowerInvariant()}>{this.Children}</{this.GetType().Name.ToLowerInvariant}>";
 }
 
 /// <summary>Represents constant text in place of a template-side AIML tag.</summary>
 public sealed class TemplateText : TemplateNode {
 	private static readonly Regex whitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
+	internal static TemplateText Space { get; } = new(" ");
+
 	public string Text { get; private set; }
 
 	/// <summary>Initialises a new <see cref="TemplateText"/> instance with the specified text.</summary>
 	public TemplateText(string text) : this(text, true) { }
 	/// <summary>Initialises a new <see cref="TemplateText"/> instance with the specified text.</summary>
-	/// <param name="reduceWhitespace">If set, consecuetive whitespace will be reduced to a single space, as per HTML.</param>
+	/// <param name="reduceWhitespace">If set, consecutive whitespace will be reduced to a single space, as per HTML.</param>
 	public TemplateText(string text, bool reduceWhitespace) {
 		// Pandorabots reduces consecutive whitespace in text nodes to a single space character (like HTML).
-		// Pandorabots also trims leading and trailing whitespace in text nodes, but we will not do that here.
 		if (reduceWhitespace) text = whitespaceRegex.Replace(text, " ");
 		this.Text = text;
 	}
@@ -44,38 +46,24 @@ public sealed class TemplateText : TemplateNode {
 	public override string ToString() => this.Text;
 }
 
-/// <summary>Represents a collection of Tags, as contained by a RecursiveTag or property element.</summary>
-public class TemplateElementCollection : IReadOnlyList<TemplateNode>, IList<TemplateNode>, IList {
-	private readonly TemplateNode[] tags;
-	private object? syncRoot;
-	/// <summary>Indicates whether this TagCollection contains a loop tag.</summary>
-	public bool Loop { get; private set; }
+/// <summary>Represents a collection of <see cref="TemplateNode"/> instances, as contained by a <see cref="RecursiveTemplateTag"/> or attribute subtag.</summary>
+public class TemplateElementCollection(params TemplateNode[] tags) : IReadOnlyList<TemplateNode>, IList<TemplateNode>, IList {
+	private readonly TemplateNode[] tags = tags;
 
+	public static TemplateElementCollection Empty { get; } = new();
+
+	/// <summary>Indicates whether this <see cref="TemplateElementCollection"/> contains a <see cref="Tags.Loop"/> tag.</summary>
+	public bool Loop { get; } = tags.OfType<Tags.Loop>().Any();
 	public int Count => this.tags.Length;
+	public bool IsEmpty => this.tags.All(t => t is TemplateText text && string.IsNullOrEmpty(text.Text));
+	public bool IsWhitespace => this.tags.All(t => t is TemplateText text && string.IsNullOrWhiteSpace(text.Text));
 
-	public TemplateElementCollection(params TemplateNode[] tags) {
-		this.tags = tags;
-		foreach (var tag in tags) {
-			if (tag is TemplateNode.Loop) {
-				this.Loop = true;
-				break;
-			}
-		}
-	}
-	public TemplateElementCollection(TemplateNode[] tags, bool loop) {
-		this.tags = tags;
-		this.Loop = loop;
-	}
 	public TemplateElementCollection(IEnumerable<TemplateNode> tags) : this(tags.ToArray()) { }
 	public TemplateElementCollection(string text) : this(new TemplateNode[] { new TemplateText(text) }) { }
 
 	public TemplateNode this[int index] => this.tags[index];
 
 	/// <summary>Evaluates the contained tags and returns the result.</summary>
-	/// <param name="subRequest">The sub-request for which this tag collection is being evaluated.</param>
-	/// <param name="response">The response being built.</param>
-	/// <param name="thinking">Indicates whether we are inside a <code>think</code> template element.</param>
-	/// <returns>The concatenated results of evaluating all the contained tags.</returns>
 	public string Evaluate(RequestProcess process) {
 		if (this.tags == null || this.tags.Length == 0) return string.Empty;
 		var builder = new StringBuilder();
@@ -92,43 +80,46 @@ public class TemplateElementCollection : IReadOnlyList<TemplateNode>, IList<Temp
 	}
 
 	/// <summary>Returns a new TagCollection containing all nodes contained in a given XML node.</summary>
-	/// <param name="node">The XML node whose children should be parsed.</param>
+	/// <param name="el">The XML node whose children should be parsed.</param>
 	/// <returns>A new TagCollection containing the results of calling Tag.Parse to construct child nodes from the XML node's children.</returns>
-	public static TemplateElementCollection FromXml(XmlNode node, AimlLoader loader) {
+	public static TemplateElementCollection FromXml(XmlElement el, AimlLoader loader) {
 		var tagList = new List<TemplateNode>();
-		foreach (XmlNode node2 in node.ChildNodes) {
+		foreach (XmlNode node2 in el.ChildNodes) {
 			switch (node2.NodeType) {
 				case XmlNodeType.Whitespace:
-					tagList.Add(new TemplateText(" "));
+					tagList.Add(TemplateText.Space);
 					break;
 				case XmlNodeType.Text:
 					tagList.Add(new TemplateText(node2.InnerText));
 					break;
+				case XmlNodeType.CDATA:
 				case XmlNodeType.SignificantWhitespace:
 					tagList.Add(new TemplateText(node2.InnerText, false));
 					break;
-				case XmlNodeType.Element:
-					tagList.Add(loader.ParseElement(node2));
+				default:
+					if (node2 is XmlElement childElement)
+						tagList.Add(loader.ParseElement(childElement));
 					break;
 			}
 		}
 		return new TemplateElementCollection(tagList.ToArray());
 	}
 
-	public override string ToString() {
-		var builder = new StringBuilder();
-		foreach (var tag in this)
-			builder.Append(tag.ToString());
-		return builder.ToString();
-	}
+	public override string ToString() => string.Join(null, this);
 
 	#region Interface implementations
 
+	bool IList.IsFixedSize => true;
+	bool IList.IsReadOnly => true;
+	bool ICollection<TemplateNode>.IsReadOnly => true;
+	bool ICollection.IsSynchronized => false;
+	object ICollection.SyncRoot => this;
+
 	TemplateNode IList<TemplateNode>.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
-	object IList.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
+	object? IList.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
 
 	public int IndexOf(TemplateNode tag) => Array.IndexOf(this.tags, tag);
-	public bool Contains(TemplateNode tag) => this.IndexOf(tag) != -1;
+	public bool Contains(TemplateNode tag) => this.IndexOf(tag) >= 0;
 
 	public void CopyTo(TemplateNode[] target, int startIndex) {
 		for (var i = 0; i < this.tags.Length; ++i)
@@ -139,23 +130,18 @@ public class TemplateElementCollection : IReadOnlyList<TemplateNode>, IList<Temp
 	public IEnumerator<TemplateNode> GetEnumerator() => ((IEnumerable<TemplateNode>) this.tags).GetEnumerator();
 	IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 
-	public bool IsFixedSize => true;
-	public bool IsSynchronized => false;
-	object ICollection.SyncRoot => this.syncRoot ??= new object();
-	public bool IsReadOnly => true;
-
 	bool ICollection<TemplateNode>.Remove(TemplateNode tag) => throw new NotSupportedException();
 	void ICollection<TemplateNode>.Clear() => throw new NotSupportedException();
 	void ICollection<TemplateNode>.Add(TemplateNode tag) => throw new NotSupportedException();
 	void IList<TemplateNode>.RemoveAt(int index) => throw new NotSupportedException();
 	void IList<TemplateNode>.Insert(int index, TemplateNode tag) => throw new NotSupportedException();
-	void IList.Remove(object tag) => throw new NotSupportedException();
+	void IList.Remove(object? tag) => throw new NotSupportedException();
 	void IList.RemoveAt(int index) => throw new NotSupportedException();
-	void IList.Insert(int index, object tag) => throw new NotSupportedException();
+	void IList.Insert(int index, object? tag) => throw new NotSupportedException();
 	void IList.Clear() => throw new NotSupportedException();
-	int IList.IndexOf(object tag) => tag is TemplateNode node ? this.IndexOf(node) : -1;
-	bool IList.Contains(object tag) => tag is TemplateNode node && this.Contains(node);
-	int IList.Add(object tag) => throw new NotSupportedException();
+	int IList.IndexOf(object? tag) => tag is TemplateNode node ? this.IndexOf(node) : -1;
+	bool IList.Contains(object? tag) => tag is TemplateNode node && this.Contains(node);
+	int IList.Add(object? tag) => throw new NotSupportedException();
 
 	#endregion
 }

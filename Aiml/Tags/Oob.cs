@@ -14,36 +14,36 @@ public sealed class Oob(string name, string? attributes, TemplateElementCollecti
 
 	public override string Evaluate(RequestProcess process)
 		=> this.Children != null
-			? $"<{this.Name}{this.Attributes}>{this.Children?.Evaluate(process) ?? ""}</{this.Name}>"
+			? $"<{this.Name}{this.Attributes}>{this.EvaluateChildren(process)}</{this.Name}>"
 			: $"<{this.Name}{this.Attributes}/>";
 
-	public static Oob FromXml(XmlNode node, AimlLoader loader, params string[] childTags) {
+	public static Oob FromXml(XmlElement el, AimlLoader loader, params string[] childTags) {
 		var builder = new StringBuilder();
-		foreach (var attribute in node.Attributes.Cast<XmlAttribute>()) {
+		foreach (var attribute in el.Attributes.Cast<XmlAttribute>()) {
 			builder.Append(' ');
 			builder.Append(attribute.OuterXml);
 		}
 
 		var oldFC = loader.ForwardCompatible;
-		if (node.HasChildNodes) {
+		if (el.HasChildNodes) {
 			loader.ForwardCompatible = true;
 			var children = new List<TemplateNode>();
-			foreach (XmlNode node2 in node.ChildNodes) {
-				if (node2.NodeType == XmlNodeType.Whitespace) {
+			foreach (XmlNode childNode in el.ChildNodes) {
+				if (childNode.NodeType == XmlNodeType.Whitespace) {
 					children.Add(new TemplateText(" "));
-				} else if (node2.NodeType is XmlNodeType.Text or XmlNodeType.SignificantWhitespace) {
-					children.Add(new TemplateText(node2.InnerText));
-				} else if (node2.NodeType == XmlNodeType.Element) {
-					if (Array.IndexOf(childTags, node2.Name) >= 0) {
-						children.Add(FromXml(node2, loader, node2.Name.Equals("card", StringComparison.InvariantCultureIgnoreCase) ? new[] { "title", "subtitle", "image", "button" } :
-							node2.Name.Equals("button", StringComparison.InvariantCultureIgnoreCase) ? new[] { "text", "postback", "url" } : Array.Empty<string>()));
+				} else if (childNode.NodeType is XmlNodeType.Text or XmlNodeType.SignificantWhitespace) {
+					children.Add(new TemplateText(childNode.InnerText));
+				} else if (childNode is XmlElement childElement) {
+					if (Array.IndexOf(childTags, childElement.Name) >= 0) {
+						children.Add(FromXml(childElement, loader, childElement.Name.Equals("card", StringComparison.InvariantCultureIgnoreCase) ? new[] { "title", "subtitle", "image", "button" } :
+							childElement.Name.Equals("button", StringComparison.InvariantCultureIgnoreCase) ? new[] { "text", "postback", "url" } : Array.Empty<string>()));
 					} else
-						children.Add(loader.ParseElement(node2));
+						children.Add(loader.ParseElement(childElement));
 				}
 			}
 			loader.ForwardCompatible = oldFC;
-			return new Oob(node.Name, builder.ToString(), new TemplateElementCollection(children.ToArray()));
+			return new Oob(el.Name, builder.ToString(), new TemplateElementCollection(children.ToArray()));
 		} else
-			return new Oob(node.Name, builder.ToString(), null);
+			return new Oob(el.Name, builder.ToString(), null);
 	}
 }

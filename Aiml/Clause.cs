@@ -23,6 +23,9 @@ public class Clause(TemplateElementCollection? subj, TemplateElementCollection? 
 	/// <summary>True if a triple must match (for a <c>q</c> tag); false if no triple must match (for a <c>notq</c> tag).</summary>
 	public bool Affirm = affirm;
 
+	[AimlLoaderContructor]
+	public Clause(XmlElement el, TemplateElementCollection? subj, TemplateElementCollection? pred, TemplateElementCollection? obj) : this(subj, pred, obj, el.Name.Equals("q", StringComparison.OrdinalIgnoreCase)) { }
+
 	internal void Evaluate(RequestProcess process) {
 		this.subj = this.Subject?.Evaluate(process);
 		this.pred = this.Predicate?.Evaluate(process);
@@ -31,33 +34,4 @@ public class Clause(TemplateElementCollection? subj, TemplateElementCollection? 
 
 	public Clause Clone() => new(this.Subject, this.Predicate, this.Object, this.Affirm) { subj = this.subj, pred = this.pred, obj = this.obj };
 	object ICloneable.Clone() => this.Clone();
-
-	public static Clause FromXml(XmlNode node, bool affirm, AimlLoader loader) {
-		// Search for XML attributes.
-		XmlAttribute attribute;
-
-		TemplateElementCollection? subj = null;
-		TemplateElementCollection? pred = null;
-		TemplateElementCollection? obj = null;
-
-		attribute = node.Attributes["subj"];
-		if (attribute != null) subj = new TemplateElementCollection(attribute.Value);
-		attribute = node.Attributes["pred"];
-		if (attribute != null) pred = new TemplateElementCollection(attribute.Value);
-		attribute = node.Attributes["subj"];
-		if (attribute != null) obj = new TemplateElementCollection(attribute.Value);
-
-		foreach (XmlNode node2 in node.ChildNodes) {
-			if (node2.NodeType == XmlNodeType.Element) {
-				if (node2.Name.Equals("subj", StringComparison.InvariantCultureIgnoreCase))
-					subj = TemplateElementCollection.FromXml(node2, loader);
-				else if (node2.Name.Equals("pred", StringComparison.InvariantCultureIgnoreCase))
-					pred = TemplateElementCollection.FromXml(node2, loader);
-				else if (node2.Name.Equals("obj", StringComparison.InvariantCultureIgnoreCase))
-					obj = TemplateElementCollection.FromXml(node2, loader);
-			}
-		}
-
-		return new Clause(subj, pred, obj, affirm);
-	}
 }
