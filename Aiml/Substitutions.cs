@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -6,7 +7,7 @@ using Newtonsoft.Json;
 namespace Aiml;
 public class SubstitutionList : IList<Substitution> {
 	private readonly List<Substitution> substitutions;
-	private Regex regex;
+	private Regex? regex;
 	private static readonly Regex substitutionRegex = new(@"\$(?:(\d+)|\{([^}]*)\}|([$&`'+_]))", RegexOptions.Compiled);
 
 	public SubstitutionList() => this.substitutions = new List<Substitution>();
@@ -20,6 +21,9 @@ public class SubstitutionList : IList<Substitution> {
 		}
 	}
 
+#if NET5_0_OR_GREATER
+	[MemberNotNull(nameof(regex))]
+#endif
 	public void CompileRegex() {
 		var groupIndex = 1;
 		var builder = new StringBuilder("(");
@@ -44,7 +48,7 @@ public class SubstitutionList : IList<Substitution> {
 		if (this.substitutions.Count == 0) return text;
 		if (this.regex == null) this.CompileRegex();
 
-		return this.regex.Replace(" " + text + " ", delegate (Match match) {
+		return this.regex!.Replace(" " + text + " ", delegate (Match match) {
 			foreach (var substitution in this.substitutions) {
 				if (match.Groups[substitution.groupIndex].Success) {
 					var replacement = substitution.Replacement;

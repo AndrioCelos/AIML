@@ -103,28 +103,15 @@ public class Config {
 		this.DefaultPredicates = new Dictionary<string, string>(this.DefaultPredicates, this.StringComparer);
 	}
 
-	public static Config FromFile() => FromFile(Path.Combine("config", "config.json"));
 	public static Config FromFile(string file) {
-		if (File.Exists(file)) {
-			var json = File.ReadAllText(file);
-			if (!string.IsNullOrWhiteSpace(json))
-				return JsonConvert.DeserializeObject<Config>(json);
-		}
-
-		return new Config();
-	}
-
-	public void Load(string file) {
-		var json = File.ReadAllText(file);
-		if (!string.IsNullOrWhiteSpace(json))
-			JsonConvert.PopulateObject(json, this);
+		if (!File.Exists(file)) return new();
+		using var reader = new JsonTextReader(new StreamReader(file));
+		return new JsonSerializer().Deserialize<Config>(reader) ?? new();
 	}
 
 	private static void Load(string file, object target) {
-		var json = File.ReadAllText(file);
-		if (!string.IsNullOrWhiteSpace(json)) {
-			JsonConvert.PopulateObject(json, target);
-		}
+		using var reader = new JsonTextReader(new StreamReader(file));
+		new JsonSerializer().Populate(reader, target);
 	}
 
 	public void LoadPredicates(string file) => Load(file, this.BotProperties);
@@ -135,30 +122,23 @@ public class Config {
 	public void LoadDenormal(string file) => Load(file, this.DenormalSubstitutions);
 	public void LoadDefaultPredicates(string file) => Load(file, this.DefaultPredicates);
 
-	public string GetDefaultPredicate(string name) {
-		if (this.DefaultPredicates.TryGetValue(name, out var value)) return value;
-		return this.DefaultPredicate;
-	}
+	public string GetDefaultPredicate(string name) => this.DefaultPredicates.GetValueOrDefault(name, this.DefaultPredicate);
 
-	public class SubstitutionConverter : CustomCreationConverter<Substitution> {
+	public class SubstitutionConverter : JsonConverter {
 		public override bool CanConvert(Type type) => type == typeof(Substitution);
 		public override bool CanRead => true;
 		public override bool CanWrite => true;
 
-		public override Substitution Create(Type objectType) => null;
-
-		public override object? ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer) {
-			var list = serializer.Deserialize<string[]>(reader);
-			if (list == null) return null;
-			if (list.Length == 3) {
-				return new Substitution(list[0], list[1], true);
-			} else if (list.Length == 2) {
-				return new Substitution(list[0], list[1]);
-			}
-			throw new JsonException("Substitutions must have 2 to 3 elements.");
+		public override object ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer) {
+			var list = serializer.Deserialize<string[]>(reader) ?? throw new JsonSerializationException($"{nameof(Substitution)} cannot be null.");
+			return list.Length switch {
+				2 => new Substitution(list[0], list[1]),
+				3 => new Substitution(list[0], list[1], list[2].Equals("regex", StringComparison.OrdinalIgnoreCase)),
+				_ => throw new JsonSerializationException($"{nameof(Substitution)} must have exactly 2 or 3 elements.")
+			};
 		}
 
-		public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer) {
+		public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer) {
 			if (value == null) {
 				writer.WriteNull();
 				return;
@@ -167,6 +147,7 @@ public class Config {
 			writer.WriteStartArray();
 			writer.WriteValue(substitution.Pattern);
 			writer.WriteValue(substitution.Replacement);
+			if (substitution.IsRegex) writer.WriteValue("regex");
 			writer.WriteEndArray();
 		}
 	}

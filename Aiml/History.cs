@@ -1,17 +1,16 @@
 ﻿namespace Aiml;
 /// <summary>
-///     Represents a stack-like structure with a fixed capacity, whose items can also be accessed by index,
-///     starting from the most recently added item.
-///     If the capacity is reached, adding a new element will drop the oldest item.
+///		Represents a stack-like structure with a fixed capacity, whose items can also be accessed by index,
+///		starting from the most recently added item.
+///		If the capacity is reached, adding a new element will drop the oldest item.
 /// </summary>
 /// <typeparam name="T">The type of the items in the list.</typeparam>
 public class History<T> {
 	private readonly T[] items;
 	private int head;
-	private int count;
 
 	/// <summary>Returns the number of items in this <see cref="History{T}"/>.</summary>
-	public int Count => this.count;
+	public int Count { get; private set; }
 	/// <summary>Returns the maximum number of items that can be in this <see cref="History{T}"/>.</summary>
 	public int Capacity => this.items.Length;
 
@@ -27,7 +26,7 @@ public class History<T> {
 		var next = (this.head + 1) % this.Capacity;
 		this.items[next] = item;
 		this.head = next;
-		if (this.count < this.Capacity) ++this.count;
+		if (this.Count < this.Capacity) this.Count++;
 	}
 
 	/// <summary>Returns the item with the specified index, starting from the most recently added item at index 0.</summary>

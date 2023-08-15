@@ -39,7 +39,7 @@ internal class Program {
 				if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
 					Console.WriteLine($"Initialising service {type.FullName} from {path}...");
 					found = true;
-					bot.SraixServices.Add(type.FullName, (ISraixService) Activator.CreateInstance(type));
+					bot.SraixServices.Add(type.FullName!, (ISraixService) Activator.CreateInstance(type)!);
 				}
 			}
 			if (!found) {
@@ -61,17 +61,22 @@ internal class Program {
 		while (true) {
 			Console.Write("> ");
 			var message = Console.ReadLine();
+			if (message is null) break;
+
 			var trace = false;
 			if (message.StartsWith(".trace ")) {
 				trace = true;
 				message = message[7..];
 			}
+
 			var response = bot.Chat(new Request(message, user, bot), trace);
 			Console.WriteLine($"{bot.Properties.GetValueOrDefault("name", "Robot")}: {response}");
 		}
+
+		return 0;
 	}
 
-	private static void Bot_LogMessage(object sender, LogMessageEventArgs e) {
+	private static void Bot_LogMessage(object? sender, LogMessageEventArgs e) {
 		switch (e.Level) {
 			case LogLevel.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
 			case LogLevel.Gossip: Console.ForegroundColor = ConsoleColor.Blue; break;

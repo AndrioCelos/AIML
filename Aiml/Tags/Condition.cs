@@ -113,7 +113,7 @@ public sealed class Condition : TemplateNode {
 	public override string Evaluate(RequestProcess process) {
 		var builder = new StringBuilder();
 
-		Li item; var loops = 0;
+		Li? item; var loops = 0;
 		do {
 			++loops;
 			if (loops > process.Bot.Config.LoopLimit) {
@@ -124,7 +124,7 @@ public sealed class Condition : TemplateNode {
 			item = this.Pick(process);
 			if (item is null) break;
 			builder.Append(item.Evaluate(process));
-		} while (item.Children != null && item.Children.Loop);
+		} while (item.Children.Loop);
 
 		return builder.ToString();
 	}

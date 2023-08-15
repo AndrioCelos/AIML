@@ -5,7 +5,7 @@ namespace Aiml;
 /// <summary>
 /// Represents a set of variables and values that can be returned by a select tag.
 /// </summary>
-public class Tuple : Dictionary<string, string> {
+public class Tuple : Dictionary<string, string>, IEquatable<Tuple> {
 	public int Index { get; } = tuples.Count;
 
 	private readonly HashSet<string> visibleVars;
@@ -28,18 +28,8 @@ public class Tuple : Dictionary<string, string> {
 		tuples.Add(this);
 	}
 
-	public override bool Equals(object other) {
-		if (other is not Tuple) return false;
-		var otherTuple = (Tuple) other;
-
-		if (!this.visibleVars.SetEquals(otherTuple.visibleVars)) return false;
-
-		foreach (var name in this.visibleVars) {
-			if (!this.Comparer.Equals(this[name], otherTuple[name])) return false;
-		}
-
-		return true;
-	}
+	public bool Equals(Tuple? other) => other is not null && this.visibleVars.SetEquals(other.visibleVars) && this.visibleVars.All(s => this.Comparer.Equals(this[s], other[s]));
+	public override bool Equals(object? other) => other is Tuple tuple && this.Equals(tuple);
 
 	public override int GetHashCode() {
 		var hashCode = new HashCode();
@@ -52,7 +42,11 @@ public class Tuple : Dictionary<string, string> {
 	}
 }
 
-public class ReadOnlySet<T>(ISet<T> set) : ISet<T>, IEnumerable<T> {
+public class ReadOnlySet<T>(ISet<T> set) : ISet<T>, IEnumerable<T>
+#if NET5_0_OR_GREATER
+	, IReadOnlySet<T>
+#endif
+{
 	protected ISet<T> Set { get; } = set;
 
 	public int Count => this.Set.Count;

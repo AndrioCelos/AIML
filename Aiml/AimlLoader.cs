@@ -133,11 +133,9 @@ public class AimlLoader {
 		var type = typeof(TemplateNode).Assembly.GetType($"{nameof(Aiml)}.{nameof(Tags)}.{el.Name}", false, true);
 		return type is not null ? (TemplateNode) this.ParseElementInternal(el, type) : this.ForwardCompatible ? Tags.Oob.FromXml(el, this) : throw new AimlException($"'{el.Name}' is not a valid AIML {AimlVersion} tag.");
 	}
-	public object ParseElement(XmlElement el, Type type) {
-		if (!type.Name.Equals(el.Name, StringComparison.OrdinalIgnoreCase))
-			throw new ArgumentException($"Element name <{el.Name}> does not match expected <{type.Name.ToLowerInvariant()}>.");
-		return this.ParseElementInternal(el, type);
-	}
+	public object ParseElement(XmlElement el, Type type) => type.Name.Equals(el.Name, StringComparison.OrdinalIgnoreCase)
+		? this.ParseElementInternal(el, type)
+		: throw new ArgumentException($"Element name <{el.Name}> does not match expected <{type.Name.ToLowerInvariant()}>.");
 	internal T ParseElementInternal<T>(XmlElement el) => (T) this.ParseElementInternal(el, typeof(T));
 	internal object ParseElementInternal(XmlElement el, Type type) {
 		if (!elementBuilders.TryGetValue(type, out var builder))
@@ -246,10 +244,10 @@ public class AimlLoader {
 							if (i >= 0) {
 								if (this.parameterData[i].Type == ParameterType.SpecialElement)
 									this.parameterData[i].Children!.Add(loader.ParseElementInternal(childElement, this.parameterData[i].ChildType!));
-								else if (values[i] is null)
-									values[i] = TemplateElementCollection.FromXml(childElement, loader);
 								else
-									throw new AimlException($"<{el.Name}> element {this.parameterData[i].Name} attribute provided multiple times.");
+									values[i] = values[i] is null
+										? TemplateElementCollection.FromXml(childElement, loader)
+										: throw new AimlException($"<{el.Name}> element {this.parameterData[i].Name} attribute provided multiple times.");
 							}
 							else if (this.contentParamIndex is null)
 								throw new AimlException($"<{el.Name}> element cannot have content.");

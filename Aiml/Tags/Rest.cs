@@ -8,7 +8,6 @@ public sealed class Rest(TemplateElementCollection children) : RecursiveTemplate
 		if (sentence == "") return process.Bot.Config.DefaultListItem;
 
 		var delimiter = sentence.IndexOf(' ');
-		if (delimiter == -1) return process.Bot.Config.DefaultListItem;
-		return sentence[(delimiter + 1)..].TrimStart();
+		return delimiter >= 0 ? sentence[(delimiter + 1)..].TrimStart() : process.Bot.Config.DefaultListItem;
 	}
 }

@@ -130,7 +130,7 @@ public class Program {
 					found = true;
 					var service = (ISraixService) Activator.CreateInstance(type)!;
 					bot.SraixServices.Add(type.Name, service);
-					bot.SraixServices.Add(type.FullName, service);
+					bot.SraixServices.Add(type.FullName!, service);
 				} else if (!type.IsAbstract && typeof(IAimlExtension).IsAssignableFrom(type)) {
 					Console.WriteLine($"Initialising type {type.FullName}...");
 					found = true;
@@ -260,7 +260,7 @@ public class Program {
 		Console.ResetColor();
 
 		if (partialInput != 0 && (partialInput != PartialInputMode.On || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3)) && e.Result.Confidence >= 0.25) {
-			var response = bot.Chat(new Request("PartialInput " + e.Result.Text, user, bot), false);
+			var response = bot!.Chat(new Request("PartialInput " + e.Result.Text, user!, bot), false);
 			var text = response.ToString();
 			if (!string.IsNullOrWhiteSpace(text)) {
 				partialInputTimeout.Restart();
@@ -291,13 +291,13 @@ public class Program {
 			input = input[7..];
 		}
 		if (repliesByText.TryGetValue(input, out var reply)) input = reply.Postback;
-		var response = bot.Chat(new Request(input, user, bot), trace);
+		var response = bot!.Chat(new Request(input, user!, bot), trace);
 		ProcessOutput(response.ToString());
 	}
 
 	private static void ProcessOutput(string responseString) {
 		var queue = false;
-		var builder = new PromptBuilder(bot.Config.Locale);
+		var builder = new PromptBuilder(bot!.Config.Locale);
 		var ssmlOverride = false;
 		var responseBuilder = new StringBuilder();
 		var mediaBuilder = new StringBuilder();
@@ -333,35 +333,33 @@ public class Program {
 										} else if (fields[0].Equals("queue", StringComparison.CurrentCultureIgnoreCase))
 											queue = true;
 									} else {
-										foreach (XmlNode node2 in node.ChildNodes) {
-											if (node2.NodeType == XmlNodeType.Element) {
-												if (OobHandlers.TryGetValue(node2.Name, out var action))
-													action.Invoke((XmlElement) node2);
-												else if (node2.Name.Equals("queue", StringComparison.CurrentCultureIgnoreCase))
-													queue = true;
-												else if (node2.Name.Equals("speak", StringComparison.CurrentCultureIgnoreCase)) {
-													if (node2.Attributes["version"] == null) {
-														var attribute = xmlDocument.CreateAttribute("version");
-														attribute.Value = "1.0";
-														node2.Attributes.Append(attribute);
-													}
-													if (node2.Attributes["xml:lang"] == null) {
-														var attribute = xmlDocument.CreateAttribute("xml:lang");
-														attribute.Value = bot.Config.Locale.Name.ToLowerInvariant();
-														node2.Attributes.Append(attribute);
-													}
-													// If an <alt> element is included, this is treated as a segment which needs pronunciation specified.
-													// Its content will be displayed in place of the SSML.
-													// Otherwise, it is treated as specifying pronunciation for the entire response.
-													// The SSML overrides the entire response (except other <speak> OOB tags).
-													if (!ssmlOverride && !node.ChildNodes.Cast<XmlNode>().Any(n => n.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase))) {
-														ssmlOverride = true;
-														builder.ClearContent();
-													}
-													builder.AppendSsml(new XmlNodeReader(node2));
-												} else if (node2.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase)) {
-													responseBuilder.Append(node2.InnerText);
+										foreach (var childElement in node.ChildNodes.OfType<XmlElement>()) {
+											if (OobHandlers.TryGetValue(childElement.Name, out var action))
+												action.Invoke(childElement);
+											else if (childElement.Name.Equals("queue", StringComparison.CurrentCultureIgnoreCase))
+												queue = true;
+											else if (childElement.Name.Equals("speak", StringComparison.CurrentCultureIgnoreCase)) {
+												if (childElement.Attributes["version"] == null) {
+													var attribute = xmlDocument.CreateAttribute("version");
+													attribute.Value = "1.0";
+													childElement.Attributes.Append(attribute);
 												}
+												if (childElement.Attributes["xml:lang"] == null) {
+													var attribute = xmlDocument.CreateAttribute("xml:lang");
+													attribute.Value = bot.Config.Locale.Name.ToLowerInvariant();
+													childElement.Attributes.Append(attribute);
+												}
+												// If an <alt> element is included, this is treated as a segment which needs pronunciation specified.
+												// Its content will be displayed in place of the SSML.
+												// Otherwise, it is treated as specifying pronunciation for the entire response.
+												// The SSML overrides the entire response (except other <speak> OOB tags).
+												if (!ssmlOverride && !node.ChildNodes.Cast<XmlNode>().Any(n => n.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase))) {
+													ssmlOverride = true;
+													builder.ClearContent();
+												}
+												builder.AppendSsml(new XmlNodeReader(childElement));
+											} else if (childElement.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase)) {
+												responseBuilder.Append(childElement.InnerText);
 											}
 										}
 									}
@@ -431,14 +429,14 @@ public class Program {
 		if (Enumerable.Range(0, responseBuilder.Length).Any(i => !char.IsWhiteSpace(responseBuilder[i]))) {
 			try {
 				while (speechQueue.Count > 0 && !speechQueue.Peek().Important) {
-					synthesizer.SpeakAsyncCancel(speechQueue.Peek().Prompt);
+					synthesizer!.SpeakAsyncCancel(speechQueue.Peek().Prompt);
 					speechQueue.Dequeue();
 				}
 			} catch (InvalidOperationException) { }
 
 			var prompt = new Prompt(builder);
 			speechQueue.Enqueue(new SpeechQueueItem(prompt, queue));
-			synthesizer.SpeakAsync(prompt);
+			synthesizer!.SpeakAsync(prompt);
 		}
 	}
 

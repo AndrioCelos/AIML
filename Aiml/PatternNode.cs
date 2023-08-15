@@ -24,14 +24,11 @@ public class PatternNode {
 	}
 
 	public void AddChild(IEnumerable<PathToken> path, Template template) {
-		if (template == null) throw new ArgumentNullException(nameof(template));
-		if (path == null) throw new ArgumentNullException(nameof(path));
-
 		var node = this;
-		foreach (var token in path) {
+		node.Template = template ?? throw new ArgumentNullException(nameof(template));
+		foreach (var token in path ?? throw new ArgumentNullException(nameof(path))) {
 			node = node.GetOrAddChild(token);
 		}
-		node.Template = template;
 	}
 
 	public bool TryGetChild(PathToken token, out PatternNode? node) {

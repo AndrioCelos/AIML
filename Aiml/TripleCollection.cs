@@ -10,65 +10,71 @@ public class TripleCollection {
 
 	public Triple this[int index] => this.triples[index];
 
-	public int Add(string tripleSubject, string triplePredicate, string tripleObject)
-		=> this.Add(new Triple(tripleSubject, triplePredicate, tripleObject));
-	public int Add(Triple triple) {
-		var index = Interlocked.Increment(ref this.lastIndex);
-		this.triples.Add(index, triple);
+	public bool Add(string subj, string pred, string obj, out int key) => this.Add(new Triple(subj, pred, obj), out key);
+	public bool Add(Triple triple, out int key) {
+		var match = this.Match(triple.Subject, triple.Predicate, triple.Object);
+		if (match.Count > 0) {
+			key = match.First();
+			return false;
+		}
 
-		if (!this.triplesBySubject.TryGetValue(triple.Subject, out var set)) { this.triplesBySubject[triple.Subject] = set = new HashSet<int>(); }
-		set.Add(index);
-		if (!this.triplesByPredicate.TryGetValue(triple.Predicate, out set)) { this.triplesByPredicate[triple.Predicate] = set = new HashSet<int>(); }
-		set.Add(index);
-		if (!this.triplesByObject.TryGetValue(triple.Object, out set)) { this.triplesByObject[triple.Object] = set = new HashSet<int>(); }
-		set.Add(index);
+		key = Interlocked.Increment(ref this.lastIndex);
+		this.triples.Add(key, triple);
 
-		return index;
-	}
-
-	public bool Remove(int index) {
-		if (!this.triples.TryGetValue(index, out var triple)) return false;
-		this.triples.Remove(index);
-
-		HashSet<int> set;
-
-		set = this.triplesBySubject[triple.Subject];
-		if (set.Count == 1) this.triplesBySubject.Remove(triple.Subject);
-		else set.Remove(index);
-
-		set = this.triplesByPredicate[triple.Predicate];
-		if (set.Count == 1) this.triplesByPredicate.Remove(triple.Predicate);
-		else set.Remove(index);
-
-		set = this.triplesByObject[triple.Object];
-		if (set.Count == 1) this.triplesByObject.Remove(triple.Object);
-		else set.Remove(index);
+		if (!this.triplesBySubject.TryGetValue(triple.Subject, out var set)) this.triplesBySubject[triple.Subject] = set = new HashSet<int>();
+		set.Add(key);
+		if (!this.triplesByPredicate.TryGetValue(triple.Predicate, out set)) this.triplesByPredicate[triple.Predicate] = set = new HashSet<int>();
+		set.Add(key);
+		if (!this.triplesByObject.TryGetValue(triple.Object, out set)) this.triplesByObject[triple.Object] = set = new HashSet<int>();
+		set.Add(key);
 
 		return true;
 	}
 
-	public HashSet<int> Match(Clause clause) {
-		HashSet<int> subjectTriples, predicateTriples, objectTriples;
+	public bool Remove(int key) {
+		if (!this.triples.TryGetValue(key, out var triple)) return false;
+		this.triples.Remove(key);
+
+		var set = this.triplesBySubject[triple.Subject];
+		if (set.Count == 1) this.triplesBySubject.Remove(triple.Subject);
+		else set.Remove(key);
+
+		set = this.triplesByPredicate[triple.Predicate];
+		if (set.Count == 1) this.triplesByPredicate.Remove(triple.Predicate);
+		else set.Remove(key);
+
+		set = this.triplesByObject[triple.Object];
+		if (set.Count == 1) this.triplesByObject.Remove(triple.Object);
+		else set.Remove(key);
+
+		return true;
+	}
+
+	public HashSet<int> Match(string subj, string pred, string obj) {
+		HashSet<int>? triples = null;
 
 		// A variable means that the named variable will take the values matching a clause, and is not part of the assertion.
-		if (clause.subj.StartsWith("?"))
-			subjectTriples = new HashSet<int>(this.triples.Keys);
-		else if (!this.triplesBySubject.TryGetValue(clause.subj, out subjectTriples))
-			subjectTriples = new HashSet<int>();
+		if (!subj.StartsWith("?")) {
+			if (this.triplesBySubject.TryGetValue(subj, out var triples2))
+				triples = new(triples2);  // We must clone it to avoid modifying the index.
+			else
+				return new();
+		}
+		if (!pred.StartsWith("?")) {
+			if (this.triplesByPredicate.TryGetValue(subj, out var triples2)) {
+				if (triples is not null) triples.IntersectWith(triples2);
+				else triples = new(triples2);
+			} else
+				return new();
+		}
+		if (!obj.StartsWith("?")) {
+			if (this.triplesByObject.TryGetValue(subj, out var triples2)) {
+				if (triples is not null) triples.IntersectWith(triples2);
+				else triples = new(triples2);
+			} else
+				return new();
+		}
 
-		if (clause.pred.StartsWith("?"))
-			predicateTriples = new HashSet<int>(this.triples.Keys);
-		else if (!this.triplesByPredicate.TryGetValue(clause.pred, out predicateTriples))
-			predicateTriples = new HashSet<int>();
-
-		if (clause.obj.StartsWith("?"))
-			objectTriples = new HashSet<int>(this.triples.Keys);
-		else if (!this.triplesByObject.TryGetValue(clause.obj, out objectTriples))
-			objectTriples = new HashSet<int>();
-
-		var result = new HashSet<int>(subjectTriples);  // We must clone it to avoid modifying the index.
-		result.IntersectWith(predicateTriples);
-		result.IntersectWith(objectTriples);
-		return result;
+		return triples ?? new(this.triples.Keys);
 	}
 }

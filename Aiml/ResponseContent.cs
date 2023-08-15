@@ -5,9 +5,7 @@ namespace Aiml;
 public class ResponseContent : IReadOnlyList<IResponsePart> {
 	private readonly IResponsePart[] parts;
 
-	internal ResponseContent(params IResponsePart[] parts) {
-		this.parts = parts;
-	}
+	internal ResponseContent(params IResponsePart[] parts) => this.parts = parts;
 	public ResponseContent(IEnumerable<IResponsePart> parts) : this(parts.ToArray()) { }
 
 	public static ResponseContent Concat(params ResponseContent[] responses) {

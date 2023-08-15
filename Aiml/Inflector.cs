@@ -91,10 +91,10 @@ public class Inflector {
 		this.Plurals.Add(new Rule("(" + plural[0] + ")" + pluralRemainder + "$", singularRemainder));
 	}
 
-	public string Singularize(string word) => this.applyRules(word, this.Singulars);
-	public string Pluralize(string word) => this.applyRules(word, this.Plurals);
+	public string Singularize(string word) => this.ApplyRules(word, this.Singulars);
+	public string Pluralize(string word) => this.ApplyRules(word, this.Plurals);
 
-	private string applyRules(string word, List<Rule> rules) {
+	private string ApplyRules(string word, List<Rule> rules) {
 		if (string.IsNullOrWhiteSpace(word)) return word;
 		word = word.Trim();
 		if (this.Uncountables.Contains(word)) return word;

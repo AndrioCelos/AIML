@@ -17,12 +17,8 @@ public sealed class Request(TemplateElementCollection index) : TemplateNode {
 	public TemplateElementCollection Index { get; set; } = index;
 
 	public override string Evaluate(RequestProcess process) {
-		string indexText = null; var index = 1;
-		if (this.Index != null) indexText = this.Index.Evaluate(process);
-
-		if (!string.IsNullOrWhiteSpace(indexText))
-			index = int.Parse(indexText);
-
+		var indexString = this.Index?.Evaluate(process);
+		var index = !string.IsNullOrWhiteSpace(indexString) ? int.Parse(indexString) : 1;
 		return process.User.GetRequest(index);
 	}
 }

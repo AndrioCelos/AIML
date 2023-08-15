@@ -3,7 +3,6 @@ public class User {
 	public string ID { get; }
 	public Bot Bot { get; }
 	public History<Request> Requests { get; }
-	internal List<RequestSentence>? currentRequest;
 	public History<Response> Responses { get; }
 	public Dictionary<string, string> Predicates { get; }
 	public PatternNode Graphmaster { get; }
@@ -28,19 +27,16 @@ public class User {
 	/// <summary>Returns the last sentence in the <paramref name='n'/>th last message from the bot to this user.</summary>
 	public string GetThat(int n) => this.GetThat(n, 1);
 	/// <summary>Returns the <paramref name='n'/>th last sentence in the <paramref name='n'/>th last message from the bot to this user.</summary>
-	public string GetThat(int n, int sentence) {
-		if (n < 1 || n > this.Responses.Count)
-			return this.Bot.Config.DefaultHistory;
-		if (sentence < 1 || sentence > this.Responses[n - 1].Sentences.Count)
-			return this.Bot.Config.DefaultHistory;
-		return this.Responses[n - 1].GetLastSentence(sentence);
-	}
+	public string GetThat(int n, int sentence)
+		=> n >= 1 && n <= this.Responses.Count && sentence >= 1 && this.Responses[n - 1] is var response && sentence <= this.Responses[n - 1].Sentences.Count
+			? response.GetLastSentence(sentence)
+			: this.Bot.Config.DefaultHistory;
 
 	public string GetInput() => this.GetInput(1, 1);
 	public string GetInput(int n) => this.GetInput(n, 1);
 	public string GetInput(int n, int sentence)
-		=> n >= 1 && n <= this.Requests.Count && sentence >= 1 && sentence <= this.Requests[n - 1].Sentences.Count
-			? this.Requests[n - 1].GetLastSentence(sentence).Text
+		=> n >= 1 && n <= this.Requests.Count && sentence >= 1 && this.Requests[n - 1] is var response && sentence <= response.Sentences.Count
+			? response.GetLastSentence(sentence).Text
 			: this.Bot.Config.DefaultHistory;
 
 	public string GetRequest() => this.GetRequest(1);
@@ -48,10 +44,9 @@ public class User {
 	// Unlike <input>, the <request> tag does not count the request currently being processed.
 
 	public string GetResponse() => this.GetResponse(1);
-	public string GetResponse(int n) {
-		if (n >= 1 & n <= this.Responses.Count) return this.Responses[n - 1].ToString();
-		return this.Bot.Config.DefaultHistory;
-	}
+	public string GetResponse(int n) => n >= 1 & n <= this.Responses.Count
+		? this.Responses[n - 1].ToString()
+		: this.Bot.Config.DefaultHistory;
 
 	public void AddResponse(Response response) => this.Responses.Add(response);
 	public void AddRequest(Request request) => this.Requests.Add(request);

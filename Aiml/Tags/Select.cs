@@ -91,16 +91,14 @@ public sealed class Select : TemplateNode {
 	}
 
 	public override string Evaluate(RequestProcess process) {
-		// Evaluate the contents of clauses.
-		foreach (var clause in this.Clauses) clause.Evaluate(process);
-
+		var resolvedClauses = (from c in this.Clauses select c.Evaluate(process)).ToList();
 		var visibleVars = this.Variables != null
-			? this.Variables.Evaluate(process).Split((char[]) null, StringSplitOptions.RemoveEmptyEntries)
+			? this.Variables.Evaluate(process).Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries)
 			: Array.Empty<string>();
 
 		// Start with an empty tuple.
 		var tuple = new Tuple(new HashSet<string>(visibleVars, process.Bot.Config.StringComparer));
-		var tuples = this.SelectFromRemainingClauses(process, tuple, 0);
+		var tuples = this.SelectFromRemainingClauses(process, tuple, resolvedClauses, 0);
 		process.Log(LogLevel.Diagnostic, $"In element <select>: Found {tuples.Count} matching {(tuples.Count == 1 ? "tuple" : "tuples")}.");
 		return tuples.Count > 0
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
@@ -111,20 +109,19 @@ public sealed class Select : TemplateNode {
 			: process.Bot.Config.DefaultTriple;
 	}
 
-	private HashSet<Tuple> SelectFromRemainingClauses(RequestProcess process, Tuple partial, int startIndex) {
+	private HashSet<Tuple> SelectFromRemainingClauses(RequestProcess process, Tuple partial, IReadOnlyList<(string subj, string pred, string obj, bool affirm)> resolvedClauses, int startIndex) {
 		HashSet<Tuple> tuples;
-		HashSet<Tuple> result;
 
-		var clause = this.Clauses[startIndex].Clone();
+		var (subj, pred, obj, affirm) = resolvedClauses[startIndex];
 
 		// Fill in the clause with values from the tuple under consideration.
-		if (clause.subj.StartsWith("?") && partial.TryGetValue(clause.subj, out var value)) clause.subj = value;
-		if (clause.pred.StartsWith("?") && partial.TryGetValue(clause.pred, out value)) clause.pred = value;
-		if (clause.obj.StartsWith("?") && partial.TryGetValue(clause.obj, out value)) clause.obj = value;
+		if (subj.StartsWith("?") && partial.TryGetValue(subj, out var value)) subj = value;
+		if (pred.StartsWith("?") && partial.TryGetValue(pred, out value)) pred = value;
+		if (obj.StartsWith("?") && partial.TryGetValue(obj, out value)) obj = value;
 
 		// Find triples that match.
-		var triples = process.Bot.Triples.Match(clause);
-		if (!clause.Affirm) {
+		var triples = process.Bot.Triples.Match(subj, pred, obj);
+		if (!affirm) {
 			// If the notq assertion succeeds, we just add the tuple under consideration without filling in any variables.
 			if (triples.Count != 0) return new HashSet<Tuple>();
 			tuples = new() { partial };
@@ -134,9 +131,9 @@ public sealed class Select : TemplateNode {
 			foreach (var tripleIndex in triples) {
 				var tuple = new Tuple(partial);
 
-				if (clause.subj.StartsWith("?")) tuple.Add(clause.subj, process.Bot.Triples[tripleIndex].Subject);
-				if (clause.pred.StartsWith("?")) tuple.Add(clause.pred, process.Bot.Triples[tripleIndex].Predicate);
-				if (clause.obj.StartsWith("?")) tuple.Add(clause.obj, process.Bot.Triples[tripleIndex].Object);
+				if (subj.StartsWith("?")) tuple.Add(subj, process.Bot.Triples[tripleIndex].Subject);
+				if (pred.StartsWith("?")) tuple.Add(pred, process.Bot.Triples[tripleIndex].Predicate);
+				if (obj.StartsWith("?")) tuple.Add(obj, process.Bot.Triples[tripleIndex].Object);
 
 				tuples.Add(tuple);
 			}
@@ -146,13 +143,13 @@ public sealed class Select : TemplateNode {
 		if (nextClause == this.Clauses.Length) return tuples;
 
 		// Recurse into the remaining clauses for each possible tuple.
-		result = new HashSet<Tuple>();
+		var result = new HashSet<Tuple>();
 
 		// TODO: This recursive strategy involving sets has a minor quirk.
 		// For a query (q: a isA b, notq: b isA x), for subjects a that have more than one predicate isA,
 		// the results depend on the order in which the triples are defined.
 		foreach (var tuple in tuples) {
-			result.UnionWith(this.SelectFromRemainingClauses(process, tuple, nextClause));
+			result.UnionWith(this.SelectFromRemainingClauses(process, tuple, resolvedClauses, nextClause));
 		}
 		return result;
 	}

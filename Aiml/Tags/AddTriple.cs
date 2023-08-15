@@ -22,24 +22,20 @@ public sealed class AddTriple(TemplateElementCollection subj, TemplateElementCol
 	public TemplateElementCollection Object { get; } = obj;
 
 	public override string Evaluate(RequestProcess process) {
-		// Does the triple already exist?
-		var clause = new Clause(this.Subject, this.Predicate, this.Object, true);
-		clause.Evaluate(process);
+		var subj = this.Subject.Evaluate(process);
+		var pred = this.Predicate.Evaluate(process);
+		var obj = this.Object.Evaluate(process);
 
-		if (string.IsNullOrWhiteSpace(clause.subj) || string.IsNullOrWhiteSpace(clause.pred) || string.IsNullOrWhiteSpace(clause.obj)) {
-			process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Could not add triple with missing elements.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
+		if (string.IsNullOrWhiteSpace(subj) || string.IsNullOrWhiteSpace(pred) || string.IsNullOrWhiteSpace(obj)) {
+			process.Log(LogLevel.Warning, $"In element <addtriple>: Could not add triple with missing elements.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 			return process.Bot.Config.DefaultTriple;
 		}
 
-		var triples = process.Bot.Triples.Match(clause);
-		if (triples.Count != 0) {
-			process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Triple already exists at key {triples.First()}.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
-			return triples.First().ToString();
-		}
-
 		// Add the triple.
-		var key = process.Bot.Triples.Add(clause.subj, clause.pred, clause.obj);
-		process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Added a new triple with key {key}.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
+		if (process.Bot.Triples.Add(subj, pred, obj, out var key))
+			process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Added a new triple with key {key}.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
+		else
+			process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Triple already exists at key {key}.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 		return key.ToString();
 	}
 }

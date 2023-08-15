@@ -36,7 +36,7 @@ public sealed class System(TemplateElementCollection children) : RecursiveTempla
 			//    /D          Disable execution of AutoRun commands from registry (see 'CMD /?').
 		} else if (Environment.OSVersion.Platform == PlatformID.Unix) {
 			// UNIX
-			process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory), "bin", "sh"),
+			process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "bin", "sh"),
 				command.Replace(@"\", @"\\").Replace("\"", "\\\""));
 		} else
 			throw new PlatformNotSupportedException($"The system element is not supported on {Environment.OSVersion.Platform}.");

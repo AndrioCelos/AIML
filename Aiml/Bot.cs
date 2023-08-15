@@ -6,6 +6,8 @@ using System.Xml;
 
 namespace Aiml;
 public class Bot {
+	public static Version Version { get; } = typeof(Bot).Assembly.GetName().Version!;
+
 	public string ConfigDirectory { get; set; }
 	public Config Config { get; set; }
 
@@ -26,8 +28,8 @@ public class Bot {
 
 	public Dictionary<string, ISraixService> SraixServices = new(StringComparer.InvariantCultureIgnoreCase);
 
-	public event EventHandler<GossipEventArgs> Gossip;
-	public event EventHandler<LogMessageEventArgs> LogMessage;
+	public event EventHandler<GossipEventArgs>? Gossip;
+	public event EventHandler<LogMessageEventArgs>? LogMessage;
 	protected void OnGossip(GossipEventArgs e) => this.Gossip?.Invoke(this, e);
 	protected void OnLogMessage(LogMessageEventArgs e) => this.LogMessage?.Invoke(this, e);
 
@@ -60,18 +62,12 @@ public class Bot {
 	}
 
 	public void LoadConfig() {
-		if (this.Config == null)
-			this.Config = Config.FromFile(Path.Combine(this.ConfigDirectory, "config.json"));
-		else
-			this.Config.Load(Path.Combine(this.ConfigDirectory, "config.json"));
-
+		this.Config = Config.FromFile(Path.Combine(this.ConfigDirectory, "config.json"));
 		this.LoadConfig2();
 	}
 
 	public void LoadConfig2() {
-		//if (this.Graphmaster.children.Count == 0 && this.Graphmaster.setChildren.Count == 0)
-		//	this.Graphmaster = new PatternNode(this, null, null, Config.StringComparer);
-		this.CheckDefaultSettings();
+		this.CheckDefaultProperties();
 
 		var inflector = new Inflector(this.Config.StringComparer);
 		this.Maps["singular"] = new Maps.SingularMap(inflector);
@@ -100,9 +96,9 @@ public class Bot {
 		this.LoadTriples(Path.Combine(this.ConfigDirectory, "triples.txt"));
 	}
 
-	private void CheckDefaultSettings() {
+	private void CheckDefaultProperties() {
 		if (!this.Config.BotProperties.ContainsKey("version"))
-			this.Config.BotProperties.Add("version", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+			this.Config.BotProperties.Add("version", Version.ToString(2));
 	}
 
 	private void LoadSets(string directory) {
@@ -187,8 +183,9 @@ public class Bot {
 			var map = new Dictionary<string, string>(this.Config.StringComparer);
 
 			var reader = new StreamReader(file);
-			while (!reader.EndOfStream) {
+			while (true) {
 				var line = reader.ReadLine();
+				if (line is null) break;
 
 				// Remove comments.
 				line = Regex.Replace(line, @"\\([\\#])|#.*", "$1");
@@ -228,7 +225,7 @@ public class Bot {
 				if (fields.Length != 3)
 					this.Log(LogLevel.Warning, "triples.txt contains a badly formatted line: " + line);
 				else
-					this.Triples.Add(fields[0], fields[1], fields[2]);
+					this.Triples.Add(fields[0], fields[1], fields[2], out _);
 			}
 		}
 
@@ -252,9 +249,7 @@ public class Bot {
 			var writer = new StreamWriter(Path.Combine(this.ConfigDirectory, this.Config.LogDirectory, DateTime.Now.ToString("yyyyMMdd") + ".log"), true);
 			writer.WriteLine(DateTime.Now.ToString("[HH:mm:ss]") + "\t[" + level + "]\t" + message);
 			writer.Close();
-		} catch (IOException ex) {
-
-		}
+		} catch (IOException) { }
 	}
 
 	internal void WriteGossip(RequestProcess process, string message) {

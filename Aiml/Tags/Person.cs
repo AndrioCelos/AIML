@@ -5,7 +5,7 @@ namespace Aiml.Tags;
 ///		<para>This element is defined by the AIML 1.1 specification.</para>
 /// </remarks>
 /// <seealso cref="Person2"/>
-public sealed class Person(TemplateElementCollection? children) : RecursiveTemplateTag(children) {
+public sealed class Person(TemplateElementCollection children) : RecursiveTemplateTag(children) {
 	public override string Evaluate(RequestProcess process) {
 		var text = this.EvaluateChildrenOrStar(process);
 		return process.Bot.Config.PersonSubstitutions.Apply(text);

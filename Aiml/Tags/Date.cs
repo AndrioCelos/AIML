@@ -39,14 +39,10 @@ public sealed class Date(TemplateElementCollection? format, TemplateElementColle
 	public TemplateElementCollection? Timezone { get; set; } = timezone;
 
 	public override string Evaluate(RequestProcess process) {
-		string format = null;
-		if (this.Format != null) format = this.Format.Evaluate(process);
-		string jformat = null;
-		if (this.JFormat != null) jformat = this.JFormat.Evaluate(process);
-		string localeString = null;
-		if (this.Locale != null) localeString = this.Locale.Evaluate(process);
-		string timezone = null;
-		if (this.Timezone != null) timezone = this.Timezone.Evaluate(process);
+		var format = this.Format?.Evaluate(process);
+		var jformat = this.JFormat?.Evaluate(process);
+		var localeString = this.Locale?.Evaluate(process);
+		var timezone = this.Timezone?.Evaluate(process);
 
 		CultureInfo locale;
 		if (localeString == null)

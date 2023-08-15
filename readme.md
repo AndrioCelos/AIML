@@ -23,6 +23,7 @@ var user = new User("User", bot);
 while (true) {
 	Console.Write("> ");
 	var message = Console.ReadLine();
+	if (message == null) break;
 	var response = bot.Chat(new Request(message, user, bot), trace);
 	Console.WriteLine($"{bot.Properties.GetValueOrDefault("name", "Robot")}: {response}");
 }

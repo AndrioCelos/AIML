@@ -44,7 +44,7 @@ internal class Program {
 				if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
 					Console.WriteLine($"Initialising service {type.FullName} from {path}...");
 					found = true;
-					bot.SraixServices.Add(type.FullName, (ISraixService) Activator.CreateInstance(type));
+					bot.SraixServices.Add(type.FullName!, (ISraixService) Activator.CreateInstance(type)!);
 				}
 			}
 			if (!found) {
@@ -149,7 +149,7 @@ internal class Program {
 		return 0;
 	}
 
-	private static void Bot_LogMessage(object sender, LogMessageEventArgs e) {
+	private static void Bot_LogMessage(object? sender, LogMessageEventArgs e) {
 		switch (e.Level) {
 			case LogLevel.Warning: Console.ForegroundColor = ConsoleColor.Yellow; ++warnings; break;
 			case LogLevel.Gossip: Console.ForegroundColor = ConsoleColor.Blue; break;

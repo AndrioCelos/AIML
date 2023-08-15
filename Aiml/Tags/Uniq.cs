@@ -29,18 +29,22 @@
 /// </example>
 /// <seealso cref="DeleteTriple"/><seealso cref="DeleteTriple"/><seealso cref="Select"/>
 public sealed class Uniq(TemplateElementCollection subj, TemplateElementCollection pred, TemplateElementCollection obj) : TemplateNode {
-	public Clause Clause { get; } = new Clause(subj, pred, obj, true);
+	public TemplateElementCollection Subject { get; } = subj;
+	public TemplateElementCollection Predicate { get; } = pred;
+	public TemplateElementCollection Object { get; } = obj;
 
 	public override string Evaluate(RequestProcess process) {
-		this.Clause.Evaluate(process);
+		var subj = this.Subject.Evaluate(process);
+		var pred = this.Predicate.Evaluate(process);
+		var obj = this.Object.Evaluate(process);
 
 		// Find triples that match.
-		var triples = process.Bot.Triples.Match(this.Clause);
+		var triples = process.Bot.Triples.Match(subj, pred, obj);
 		if (triples.Count == 0) {
-			process.Log(LogLevel.Diagnostic, $"In element <uniq>: No matching triple exists.  Subject: {this.Clause.subj}  Predicate: {this.Clause.pred}  Object: {this.Clause.obj}");
+			process.Log(LogLevel.Diagnostic, $"In element <uniq>: No matching triple exists.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 			return process.Bot.Config.DefaultTriple;
 		} else if (triples.Count > 1)
-			process.Log(LogLevel.Diagnostic, $"In element <uniq>: Found {triples.Count} matching triples.  Subject: {this.Clause.subj}  Predicate: {this.Clause.pred}  Object: {this.Clause.obj}");
+			process.Log(LogLevel.Diagnostic, $"In element <uniq>: Found {triples.Count} matching triples.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 
 		var tripleIndex = triples.First();
 		var triple = process.Bot.Triples[tripleIndex];
@@ -48,10 +52,10 @@ public sealed class Uniq(TemplateElementCollection subj, TemplateElementCollecti
 		process.Log(LogLevel.Diagnostic, $"In element <uniq>: Found triple {tripleIndex}.  Subject: {triple.Subject}  Predicate: {triple.Predicate}  Object: {triple.Object}");
 
 		// Get the result.
-		if (this.Clause.obj.StartsWith("?")) return triple.Object;
-		if (this.Clause.pred.StartsWith("?")) return triple.Predicate;
-		if (this.Clause.subj.StartsWith("?")) return triple.Subject;
-		process.Log(LogLevel.Warning, $"In element <uniq>: The clause contains no variables.  Subject: {this.Clause.subj}  Predicate: {this.Clause.pred}  Object: {this.Clause.obj}");
+		if (obj.StartsWith("?")) return triple.Object;
+		if (pred.StartsWith("?")) return triple.Predicate;
+		if (subj.StartsWith("?")) return triple.Subject;
+		process.Log(LogLevel.Warning, $"In element <uniq>: The clause contains no variables.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 		return process.Bot.Config.DefaultTriple;
 	}
 }

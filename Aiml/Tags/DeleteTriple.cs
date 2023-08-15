@@ -19,23 +19,24 @@ public sealed class DeleteTriple(TemplateElementCollection subj, TemplateElement
 	public TemplateElementCollection Object { get; } = obj;
 
 	public override string Evaluate(RequestProcess process) {
-		var clause = new Clause(this.Subject, this.Predicate, this.Object, true);
-		clause.Evaluate(process);
+		var subj = this.Subject.Evaluate(process);
+		var pred = this.Predicate.Evaluate(process);
+		var obj = this.Object.Evaluate(process);
 
-		if (string.IsNullOrWhiteSpace(clause.subj) || string.IsNullOrWhiteSpace(clause.pred) || string.IsNullOrWhiteSpace(clause.obj)) {
-			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Could not delete triple with missing elements.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
+		if (string.IsNullOrWhiteSpace(subj) || string.IsNullOrWhiteSpace(pred) || string.IsNullOrWhiteSpace(obj)) {
+			process.Log(LogLevel.Warning, $"In element <deletetriple>: Could not delete triple with missing elements.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 			return process.Bot.Config.DefaultTriple;
 		}
 
-		var triples = process.Bot.Triples.Match(clause);
+		var triples = process.Bot.Triples.Match(subj, pred, obj);
 		if (triples.Count == 0) {
-			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
+			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 			return process.Bot.Config.DefaultTriple;
 		}
 
-		var index = triples.Single();
+		var index = triples.First();
 		process.Bot.Triples.Remove(index);
-		process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted the triple with key {index}.  Subject: {clause.subj}  Predicate: {clause.pred}  Object: {clause.obj}");
+		process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted the triple with key {index}.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
 		return index.ToString();
 	}
 }

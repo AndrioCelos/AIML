@@ -38,10 +38,10 @@ public sealed class Interval(TemplateElementCollection? jformat, TemplateElement
 	public TemplateElementCollection Style { get; set; } = style;
 
 	public override string Evaluate(RequestProcess process) {
-		string jformat = null; string format = null;
-		if (this.JFormat != null) jformat = this.JFormat.Evaluate(process);
+		string? format = null;
 		DateTime start; DateTime end;
 		string startString, endString;
+		var jformat = this.JFormat?.Evaluate(process);
 
 		// Parse the dates.
 		startString = this.Start.Evaluate(process);
@@ -67,8 +67,8 @@ public sealed class Interval(TemplateElementCollection? jformat, TemplateElement
 				end = DateTime.ParseExact(endString, jformat, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal);
 			}
 		} catch (FormatException) {
-			if (format == null) process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date.");
-			else process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date with format '" + jformat + "'.");
+			if (format != null) process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date with format '" + jformat + "'.");
+			else process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date.");
 			return "unknown";
 		}
 

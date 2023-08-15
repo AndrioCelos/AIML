@@ -11,15 +11,15 @@ public abstract class TemplateNode {
 }
 
 /// <summary>Represents a template-side tag that can recursively contain other nodes.</summary>
-public abstract class RecursiveTemplateTag(TemplateElementCollection? children) : TemplateNode {
-	public TemplateElementCollection? Children { get; } = children;
+public abstract class RecursiveTemplateTag(TemplateElementCollection children) : TemplateNode {
+	public TemplateElementCollection Children { get; } = children;
 
 	public string EvaluateChildren(RequestProcess process) => this.Children?.Evaluate(process) ?? "";
 	public string EvaluateChildrenOrStar(RequestProcess process)
 		=> this.Children is not null && !this.Children.IsEmpty ? this.Children.Evaluate(process)
 			: process.star.Count > 0 ? process.star[0] : process.Bot.Config.DefaultWildcard;
 
-	public override string ToString() => $"<{this.GetType().Name.ToLowerInvariant()}>{this.Children}</{this.GetType().Name.ToLowerInvariant}>";
+	public override string ToString() => $"<{this.GetType().Name.ToLowerInvariant()}>{this.Children}</{this.GetType().Name.ToLowerInvariant()}>";
 }
 
 /// <summary>Represents constant text in place of a template-side AIML tag.</summary>
