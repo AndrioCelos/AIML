@@ -122,7 +122,7 @@ public sealed class Condition : TemplateNode {
 			}
 
 			item = this.Pick(process);
-			if (item == null) return string.Empty;
+			if (item is null) break;
 			builder.Append(item.Evaluate(process));
 		} while (item.Children != null && item.Children.Loop);
 
