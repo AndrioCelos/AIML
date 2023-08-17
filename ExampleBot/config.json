@@ -20,5 +20,6 @@
 	"MapsDirectory": "maps",
 	//"Locale": "en-AU",
 	"LearnfFile": "aiml/learnf.aiml",
-	"UnbindPredicatesWithDefaultValue": false
+	"UnbindPredicatesWithDefaultValue": false,
+	"ThatExcludeEmptyResponse": false
 }

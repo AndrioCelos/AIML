@@ -81,6 +81,8 @@ public class Config {
 
 	/// <summary>If this is true, using the <c>set</c> template element to set a predicate or variable to the default value will unbind it instead.</summary>
 	public bool UnbindPredicatesWithDefaultValue = false;
+	/// <summary>Whether to have an empty response, after <see cref="Tags.Oob"/> tag processing, not change the path used for matching a that pattern.</summary>
+	public bool ThatExcludeEmptyResponse = false;
 
 	// These go in their own files.
 	/// <summary>Defines default values for bot predicates, used by the <c>bot</c> template element.</summary>

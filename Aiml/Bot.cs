@@ -25,7 +25,7 @@ public class Bot {
 	public TripleCollection Triples = new();
 
 	// TODO: private Dictionary<string, TagHandler> CustomTags = new(StringComparer.OrdinalIgnoreCase);
-	public Dictionary<string, OobHandler> OobHandlers { get; } = new();
+	public Dictionary<string, OobHandler> OobHandlers { get; } = new(StringComparer.OrdinalIgnoreCase);
 	public Dictionary<string, ISraixService> SraixServices { get; } = new(StringComparer.OrdinalIgnoreCase);
 	public Dictionary<string, (MediaElementType type, Func<Bot, XmlElement, IMediaElement> reviver)> MediaElements { get; } = new(StringComparer.OrdinalIgnoreCase) {
 		{ "button", (MediaElementType.Block, Button.FromXml) },
