@@ -61,7 +61,7 @@ public class AimlLoader {
 		if (!Directory.Exists(path)) throw new FileNotFoundException("Path not found: " + path, path);
 
 		this.bot.Log(LogLevel.Info, "Loading AIML files from " + path);
-		var files = Directory.GetFiles(path, "*.aiml");
+		var files = Directory.GetFiles(path, "*.aiml", SearchOption.AllDirectories);
 
 		foreach (var file in files)
 			this.LoadAIML(file);
@@ -103,6 +103,8 @@ public class AimlLoader {
 		foreach (var el2 in el.ChildNodes.OfType<XmlElement>()) {
 			if (el2.Name == "category")
 				this.ProcessCategory(target, el2, topicName, filename);
+			else
+				throw new AimlException($"Invalid element in topic element: {el2.Name}");
 		}
 	}
 

@@ -122,7 +122,7 @@ public class Bot {
 		this.Log(LogLevel.Info, "Loading sets from " + directory + ".");
 
 		foreach (var file in Directory.EnumerateFiles(directory, "*.txt")) {
-			if (this.Maps.ContainsKey(Path.GetFileNameWithoutExtension(file))) {
+			if (this.Sets.ContainsKey(Path.GetFileNameWithoutExtension(file))) {
 				this.Log(LogLevel.Warning, "Duplicate set name '" + Path.GetFileNameWithoutExtension(file) + "'.");
 				continue;
 			}
@@ -135,54 +135,58 @@ public class Bot {
 				phraseBuilder.Clear();
 				bool trailingBackslash = false, whitespace = false;
 
-				while (true) {
-					var c = reader.Read();
-					switch (c) {
-						case < 0 or '\r' or '\n':
-							// End of stream or newline
-							goto endOfPhrase;
-						case '\\':
-							c = reader.Read();
-							if (c is < 0 or '\r' or '\n') {
-								// A backslash at the end of a line indicates that the empty string should be included the set.
-								// Empty lines are ignored.
-								trailingBackslash = true;
-							} else {
-								if (whitespace) {
-									if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
-									whitespace = false;
+					while (true) {
+						var c = reader.Read();
+						switch (c) {
+							case < 0 or '\r' or '\n':
+								// End of stream or newline
+								goto endOfPhrase;
+							case '\\':
+								c = reader.Read();
+								if (c is < 0 or '\r' or '\n') {
+									// A backslash at the end of a line indicates that the empty string should be included the set.
+									// Empty lines are ignored.
+									trailingBackslash = true;
+								} else {
+									if (whitespace) {
+										if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
+										whitespace = false;
+									}
+									phraseBuilder.Append((char) c);
 								}
-								phraseBuilder.Append((char) c);
-							}
-							break;
-						case '#':
-							// Comment
-							do { c = (char) reader.Read(); } while (c is >= 0 and not '\r' and not '\n');
-							goto endOfPhrase;
-						default:
-							// Reduce consecutive whitespace into a single space.
-							// Defer appending the space until a non-whitespace character is read, so as to ignore trailing whitespace.
-							if (char.IsWhiteSpace((char) c)) {
-								whitespace = true;
-							} else {
-								if (whitespace) {
-									if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
-									whitespace = false;
+								break;
+							case '#':
+								// Comment
+								do { c = (char) reader.Read(); } while (c is >= 0 and not '\r' and not '\n');
+								goto endOfPhrase;
+							default:
+								// Reduce consecutive whitespace into a single space.
+								// Defer appending the space until a non-whitespace character is read, so as to ignore trailing whitespace.
+								if (char.IsWhiteSpace((char) c)) {
+									whitespace = true;
+								} else {
+									if (whitespace) {
+										if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
+										whitespace = false;
+									}
+									phraseBuilder.Append((char) c);
 								}
-								phraseBuilder.Append((char) c);
-							}
-							break;
+								break;
+						}
 					}
+					endOfPhrase:
+					var phrase = phraseBuilder.ToString();
+					if (!trailingBackslash && string.IsNullOrWhiteSpace(phrase)) continue;
+					set.Add(phrase);
 				}
-				endOfPhrase:
-				var phrase = phraseBuilder.ToString();
-				if (!trailingBackslash && string.IsNullOrWhiteSpace(phrase)) continue;
-				set.Add(phrase);
-			}
 
-			this.Sets[Path.GetFileNameWithoutExtension(file)] = new Sets.StringSet(set, this.Config.StringComparer);
-			this.Vocabulary += set.Count;
-		}
+				if (set.Count == 1 && set[0].StartsWith("map:")) {
+					this.Sets[Path.GetFileNameWithoutExtension(file)] = new Sets.MapSet(set[0][4..], this);
+				} else {
+					this.Sets[Path.GetFileNameWithoutExtension(file)] = new Sets.StringSet(set, this.Config.StringComparer);
+					this.Vocabulary += set.Count;
+				}
+			}
 
 		this.Log(LogLevel.Info, "Loaded " + this.Sets.Count + " set(s).");
 	}
