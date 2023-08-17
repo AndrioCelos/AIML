@@ -288,6 +288,7 @@ public class Bot {
 		if (!this.Config.BotProperties.TryGetValue("name", out var botName)) botName = "Robot";
 		this.Log(LogLevel.Chat, botName + ": " + response.ToString());
 
+		response.ProcessOobElements();
 		request.User.AddResponse(response);
 		return response;
 	}
@@ -342,32 +343,12 @@ public class Bot {
 			process.Finish();
 		}
 
-		var text = this.ProcessOobElements(builder);
 		duration = stopwatch.Elapsed;
 
-		var response = new Response(request, text);
+		var response = new Response(request, builder.ToString());
 		request.Response = response;
 		return response;
 	}
-
-	private string ProcessOobElements(StringBuilder builder) => Regex.Replace(builder.ToString(), @"<\s*oob\s*>.*?<(/?)\s*oob\s*>", m => {
-		if (m.Groups[1].Value == "") {
-			this.Log(LogLevel.Warning, "Cannot process nested <oob> elements.");
-			return m.Value;
-		}
-		var xmlDocument = new XmlDocument();
-		var builder = new StringBuilder();
-		xmlDocument.LoadXml(m.Value);
-		foreach (var childElement in xmlDocument.DocumentElement!.ChildNodes.OfType<XmlElement>()) {
-			if (this.OobHandlers.TryGetValue(childElement.Name, out var handler))
-				builder.Append(handler(childElement));
-			else {
-				this.Log(LogLevel.Warning, $"No handler found for <oob> element <{childElement.Name}>.");
-				builder.Append(childElement.OuterXml);
-			}
-		}
-		return builder.ToString();
-	});
 
 	public string[] SentenceSplit(string text, bool preserveMarks) {
 		if (this.Config.Splitters.Length == 0) {

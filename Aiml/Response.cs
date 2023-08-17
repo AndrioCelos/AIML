@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using System.Text;
 using System.Xml;
 using Aiml.Media;
 
@@ -6,10 +8,29 @@ public class Response(Request request, string text) {
 	public Request Request { get; } = request;
 	public Bot Bot => this.Request.Bot;
 	public User User => this.Request.User;
-	public string Text { get; } = text;
+	public string Text { get; private set; } = text;
 	public IReadOnlyList<string> Sentences { get; private set; } = Array.AsReadOnly(request.Bot.SentenceSplit(text, true));
 
 	public bool IsEmpty => string.IsNullOrWhiteSpace(this.Text);
+
+	internal string ProcessOobElements() => this.Text = Regex.Replace(this.Text, @"<\s*oob\s*>.*?<(/?)\s*oob\s*>", m => {
+		if (m.Groups[1].Value == "") {
+			this.Bot.Log(LogLevel.Warning, "Cannot process nested <oob> elements.");
+			return m.Value;
+		}
+		var xmlDocument = new XmlDocument();
+		var builder = new StringBuilder();
+		xmlDocument.LoadXml(m.Value);
+		foreach (var childElement in xmlDocument.DocumentElement!.ChildNodes.OfType<XmlElement>()) {
+			if (this.Bot.OobHandlers.TryGetValue(childElement.Name, out var handler))
+				builder.Append(handler(childElement));
+			else {
+				this.Bot.Log(LogLevel.Warning, $"No handler found for <oob> element <{childElement.Name}>.");
+				builder.Append(childElement.OuterXml);
+			}
+		}
+		return builder.ToString();
+	});
 
 	/// <summary>Returns the last sentence of the response text.</summary>
 	public string GetLastSentence() => this.GetLastSentence(1);
