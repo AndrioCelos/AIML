@@ -10,8 +10,7 @@ public sealed class Srai(TemplateElementCollection children) : RecursiveTemplate
 	public override string Evaluate(RequestProcess process) {
 		var text = this.EvaluateChildren(process);
 		process.Log(LogLevel.Diagnostic, "In element <srai>: processing text '" + text + "'.");
-		var newRequest = new Aiml.Request(text, process.User, process.Bot);
-		text = process.Bot.ProcessRequest(newRequest, false, false, process.RecursionDepth + 1, out _).ToString().Trim();
+		text = process.Srai(text);
 		process.Log(LogLevel.Diagnostic, "In element <srai>: the request returned '" + text + "'.");
 		return text;
 	}

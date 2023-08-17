@@ -160,7 +160,7 @@ public class PatternNode {
 			foreach (var child in this.setChildren) {
 				process.patternPathTokens[pathDepth] = $"<set>{child.SetName}</set>";
 				if (sentence.Bot.Sets.TryGetValue(child.SetName, out var set)) {
-					var star = process.GetStar(matchState);
+					var star = process.GetStarList(matchState);
 					var starIndex = star.Count;
 					star.Add("");  // Reserving a space; see above.
 
@@ -220,7 +220,7 @@ public class PatternNode {
 	/// <summary>Handles a wildcard node by taking words one by one until a template is found.</summary>
 	private Template? WildcardSearch(RequestSentence subRequest, RequestProcess process, string[] inputPath, int inputPathIndex, bool traceSearch, MatchState matchState, int minimumWords) {
 		int inputPathIndex2;
-		var star = process.GetStar(matchState);
+		var star = process.GetStarList(matchState);
 		var starIndex = star.Count;
 		// Reserve a space in the star list. If a template is found, this slot will be filled with the matched phrase.
 		// This function can call other wildcards recursively. The reservation ensures that the star list will be populated correctly.
