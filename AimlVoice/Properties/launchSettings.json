@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AimlVoice": {
+      "commandName": "Project",
+      "commandLineArgs": "--no-sr ../../../../ExampleBot"
+    }
+  }
+}

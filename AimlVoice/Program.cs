@@ -5,7 +5,10 @@ using System.Speech.Recognition.SrgsGrammar;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using Aiml;
+using Aiml.Media;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace AimlVoice;
 public class Program {
@@ -22,19 +25,6 @@ public class Program {
 	private static readonly Dictionary<string, Reply> repliesByText = new(StringComparer.CurrentCultureIgnoreCase);
 
 	private static readonly Queue<SpeechQueueItem> speechQueue = new();
-
-	public static Dictionary<string, Action<XmlElement>> OobHandlers { get; } = new(StringComparer.CurrentCultureIgnoreCase) {
-		{ "SetGrammar", OobSetGrammar },
-		{ "EnableGrammar", OobEnableGrammar },
-		{ "DisableGrammar", OobDisableGrammar },
-		{ "SetPartialInput", OobPartialInput }
-	};
-	public static Dictionary<string, Action<string>> OldOobHandlers { get; } = new(StringComparer.CurrentCultureIgnoreCase) {
-		{ "SetGrammar", OobSetGrammar },
-		{ "EnableGrammar", OobEnableGrammar },
-		{ "DisableGrammar", OobDisableGrammar },
-		{ "SetPartialInput", OobPartialInput }
-	};
 
 	static int Main(string[] args) {
 		var switches = true; string? botPath = null; var defaultGrammarPath = new List<string>();
@@ -118,6 +108,15 @@ public class Program {
 		bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
 
+		bot.OobHandlers.Add("SetGrammar", OobSetGrammar);
+		bot.OobHandlers.Add("EnableGrammar", OobEnableGrammar);
+		bot.OobHandlers.Add("DisableGrammar", OobDisableGrammar);
+		bot.OobHandlers.Add("SetPartialInput", OobPartialInput);
+
+		bot.MediaElements.Add("speak", (MediaElementType.Inline, SpeakElement.FromXml));
+		bot.MediaElements.Add("priority", (MediaElementType.Block, (b, e) => new PriorityElement()));
+		bot.MediaElements.Add("queue", (MediaElementType.Block, (b, e) => new PriorityElement()));
+
 		foreach (var path in extensionPaths) {
 			Console.WriteLine($"Loading extensions from {path}...");
 			var loadContext = new PluginLoadContext(Path.GetFullPath(path));
@@ -146,7 +145,6 @@ public class Program {
 
 		bot.LoadConfig();
 		bot.LoadAIML();
-		//bot.Config.LogLevel = LogLevel.Info;
 
 		user = new User("User", bot);
 		synthesizer = new SpeechSynthesizer();
@@ -261,10 +259,9 @@ public class Program {
 
 		if (partialInput != 0 && (partialInput != PartialInputMode.On || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3)) && e.Result.Confidence >= 0.25) {
 			var response = bot!.Chat(new Request("PartialInput " + e.Result.Text, user!, bot), false);
-			var text = response.ToString();
-			if (!string.IsNullOrWhiteSpace(text)) {
+			if (!response.IsEmpty) {
 				partialInputTimeout.Restart();
-				ProcessOutput(text);
+				ProcessOutput(response);
 			}
 		}
 	}
@@ -292,169 +289,104 @@ public class Program {
 		}
 		if (repliesByText.TryGetValue(input, out var reply)) input = reply.Postback;
 		var response = bot!.Chat(new Request(input, user!, bot), trace);
-		ProcessOutput(response.ToString());
+		ProcessOutput(response);
 	}
 
-	private static void ProcessOutput(string responseString) {
-		var queue = false;
-		var builder = new PromptBuilder(bot!.Config.Locale);
-		var ssmlOverride = false;
-		var responseBuilder = new StringBuilder();
-		var mediaBuilder = new StringBuilder();
-
+	private static void ProcessOutput(Response response) {
 		replies.Clear();
 		repliesByText.Clear();
 
-		var xmlDocument = new XmlDocument();
 		try {
-			xmlDocument.LoadXml("<response>" + responseString + "</response>");
+			var messages = response.ToMessages();
+			var replyIndex = 0;
+			foreach (var message in messages) {
+				var isPriority = false;
+				var builder = new PromptBuilder(bot!.Config.Locale);
+				var responseBuilder = new StringBuilder();
 
-			foreach (XmlNode node in xmlDocument.DocumentElement!.ChildNodes) {
-				switch (node.NodeType) {
-					case XmlNodeType.Text:
-					case XmlNodeType.SignificantWhitespace:
-					case XmlNodeType.CDATA:
-						responseBuilder.Append(node.InnerText);
-						if (!ssmlOverride) builder.AppendText(node.InnerText);
-						break;
-					case XmlNodeType.Whitespace:
-						responseBuilder.Append(' ');
-						if (!ssmlOverride) builder.AppendText(" ");
-						break;
-					case XmlNodeType.Element:
-						// Handle oob and rich media elements.
-						switch (node.Name.ToLowerInvariant()) {
-							case "oob":
-								if (node.HasChildNodes) {
-									if (!node.ChildNodes.Cast<XmlNode>().Any(n => n.NodeType == XmlNodeType.Element)) {
-										var fields = node.InnerText.Trim().Split((char[]?) null, 2, StringSplitOptions.RemoveEmptyEntries);
-										if (OldOobHandlers.TryGetValue(fields[0], out var action)) {
-											action.Invoke(fields.Length == 1 ? "" : fields[1].TrimEnd());
-										} else if (fields[0].Equals("queue", StringComparison.CurrentCultureIgnoreCase))
-											queue = true;
-									} else {
-										foreach (var childElement in node.ChildNodes.OfType<XmlElement>()) {
-											if (OobHandlers.TryGetValue(childElement.Name, out var action))
-												action.Invoke(childElement);
-											else if (childElement.Name.Equals("queue", StringComparison.CurrentCultureIgnoreCase))
-												queue = true;
-											else if (childElement.Name.Equals("speak", StringComparison.CurrentCultureIgnoreCase)) {
-												if (childElement.Attributes["version"] == null) {
-													var attribute = xmlDocument.CreateAttribute("version");
-													attribute.Value = "1.0";
-													childElement.Attributes.Append(attribute);
-												}
-												if (childElement.Attributes["xml:lang"] == null) {
-													var attribute = xmlDocument.CreateAttribute("xml:lang");
-													attribute.Value = bot.Config.Locale.Name.ToLowerInvariant();
-													childElement.Attributes.Append(attribute);
-												}
-												// If an <alt> element is included, this is treated as a segment which needs pronunciation specified.
-												// Its content will be displayed in place of the SSML.
-												// Otherwise, it is treated as specifying pronunciation for the entire response.
-												// The SSML overrides the entire response (except other <speak> OOB tags).
-												if (!ssmlOverride && !node.ChildNodes.Cast<XmlNode>().Any(n => n.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase))) {
-													ssmlOverride = true;
-													builder.ClearContent();
-												}
-												builder.AppendSsml(new XmlNodeReader(childElement));
-											} else if (childElement.Name.Equals("alt", StringComparison.CurrentCultureIgnoreCase)) {
-												responseBuilder.Append(childElement.InnerText);
-											}
-										}
-									}
-								}
-								break;
-							case "reply":
-								// Replies are displayed in the console. You can enter the displayed text to trigger the postback.
-								var textBuilder = new StringBuilder();
-								string? text = null;
-								string? postback = null;
-								foreach (XmlNode node2 in node.ChildNodes) {
-									switch (node2.NodeType) {
-										case XmlNodeType.Text:
-										case XmlNodeType.SignificantWhitespace:
-										case XmlNodeType.CDATA:
-											textBuilder.Append(node2.InnerText);
-											break;
-										case XmlNodeType.Whitespace:
-											textBuilder.Append(' ');
-											break;
-										case XmlNodeType.Element:
-											switch (node2.Name.ToLowerInvariant()) {
-												case "postback":
-													postback = node2.InnerText.Trim();
-													break;
-												case "text":
-													text = node2.InnerText;
-													break;
-												default:
-													throw new XmlException("Bad child element in reply: " + node2.Name);
-											}
-											break;
-									}
-								}
-								text ??= textBuilder.ToString();
-								text = text.Trim();
-								if (postback == null || postback.Length == 0) postback = text;
-								var reply = new Reply(text, postback);
-								replies.Add(reply);
-								repliesByText[text] = reply;
-								break;
-							default:
-								throw new XmlException("Unknown XML element: " + node.Name);
+				foreach (var el in message.InlineElements) {
+					switch (el) {
+						case LineBreak: Console.WriteLine(); break;
+						case SpeakElement speak:
+							builder.AppendSsml(new XmlNodeReader(speak.SSML));
+							responseBuilder.Append(speak.AltText);
+							break;
+						default:
+							var s = el.ToString();
+							responseBuilder.Append(s);
+							builder.AppendText(s);
+							break;
+					}
+				}
+				foreach (var el in message.BlockElements) {
+					switch (el) {
+						case Reply reply:
+							replies.Add(reply);
+							repliesByText[reply.Text] = reply;
+							break;
+						case PriorityElement:
+							isPriority = true;
+							break;
+					}
+				}
+
+				if (responseBuilder.Length > 0) {
+					var s = responseBuilder.ToString();
+					if (!string.IsNullOrWhiteSpace(s)) {
+						Console.ForegroundColor = ConsoleColor.Blue;
+						Console.WriteLine(s);
+					}
+				}
+				if (replies.Count > replyIndex) {
+					Console.ForegroundColor = ConsoleColor.DarkMagenta;
+					Console.WriteLine($"[{(replies.Count - replyIndex == 1 ? "Reply" : "Replies")}: {string.Join(", ", replies.Skip(replyIndex).Select(r => r.Text))}]");
+					replyIndex = replies.Count;
+				}
+				Console.ResetColor();
+				if (Enumerable.Range(0, responseBuilder.Length).Any(i => !char.IsWhiteSpace(responseBuilder[i]))) {
+					try {
+						while (speechQueue.Count > 0 && !speechQueue.Peek().Important) {
+							synthesizer!.SpeakAsyncCancel(speechQueue.Peek().Prompt);
+							speechQueue.Dequeue();
 						}
-						break;
+					} catch (InvalidOperationException) { }
+
+					var prompt = new Prompt(builder);
+					speechQueue.Enqueue(new SpeechQueueItem(prompt, isPriority));
+					synthesizer!.SpeakAsync(prompt);
+				}
+
+				Console.WriteLine();
+				if (message.Separator is Delay delay) {
+					Console.Write("...");
+					Thread.Sleep(delay.Duration);
+					Console.CursorLeft = 0;
 				}
 			}
-		} catch (XmlException) {
+		} catch (Exception ex) {
 			Console.ForegroundColor = ConsoleColor.Red;
-			Console.WriteLine("Badly formed XML in output: " + responseString);
+			Console.WriteLine($"Failed to process response text: {ex.Message}");
+			Console.WriteLine($"Response: {response}");
 			Console.ResetColor();
-			return;
-		}
-
-		if (responseBuilder.Length > 0) {
-			var s = responseBuilder.ToString();
-			if (!string.IsNullOrWhiteSpace(s)) {
-				Console.ForegroundColor = ConsoleColor.Blue;
-				Console.WriteLine(s);
-			}
-		}
-		if (replies.Count > 0) {
-			Console.ForegroundColor = ConsoleColor.DarkMagenta;
-			Console.WriteLine($"[{(replies.Count == 1 ? "Reply" : "Replies")}: {string.Join(", ", replies.Select(r => r.Text))}]");
-		}
-		Console.ResetColor();
-		if (Enumerable.Range(0, responseBuilder.Length).Any(i => !char.IsWhiteSpace(responseBuilder[i]))) {
-			try {
-				while (speechQueue.Count > 0 && !speechQueue.Peek().Important) {
-					synthesizer!.SpeakAsyncCancel(speechQueue.Peek().Prompt);
-					speechQueue.Dequeue();
-				}
-			} catch (InvalidOperationException) { }
-
-			var prompt = new Prompt(builder);
-			speechQueue.Enqueue(new SpeechQueueItem(prompt, queue));
-			synthesizer!.SpeakAsync(prompt);
 		}
 	}
 
-	private static void OobPartialInput(XmlElement element)
+	private static string? OobPartialInput(XmlElement element)
 		=> OobPartialInput(element.InnerText);
-	private static void OobPartialInput(string text) {
+	private static string? OobPartialInput(string text) {
 		switch (text.Trim().ToLowerInvariant()) {
 			case "off": case "false": case "0": partialInput = PartialInputMode.Off; break;
 			case "on": case "true": case "1": partialInput = PartialInputMode.On; break;
 			case "continuous": case "2": partialInput = PartialInputMode.Continuous; break;
-			default: Console.WriteLine($"Invalid partial input setting '{text}'."); return;
+			default: Console.WriteLine($"Invalid partial input setting '{text}'."); return null;
 		}
 		Console.WriteLine($"Partial input is {partialInput}.");
+		return null;
 	}
 
-	private static void OobSetGrammar(XmlElement element)
+	private static string? OobSetGrammar(XmlElement element)
 		=> OobSetGrammar(element.InnerText);
-	private static void OobSetGrammar(string text) {
+	private static string? OobSetGrammar(string text) {
 		if (!enabledGrammarPaths.Contains(text)) {
 			if (grammars.TryGetValue(text, out var grammar)) {
 				Console.WriteLine($"Switching to grammar '{text}'");
@@ -466,11 +398,12 @@ public class Program {
 			} else
 				Console.WriteLine($"Could not find requested grammar '{text}'.");
 		}
+		return null;
 	}
 
-	private static void OobDisableGrammar(XmlElement element)
+	private static string? OobDisableGrammar(XmlElement element)
 		=> OobDisableGrammar(element.InnerText);
-	private static void OobDisableGrammar(string text) {
+	private static string? OobDisableGrammar(string text) {
 		if (enabledGrammarPaths.Contains(text)) {
 			if (enabledGrammarPaths.Count == 1) {
 				Console.WriteLine($"Refusing to disable the last enabled grammar '{text}'");
@@ -481,10 +414,11 @@ public class Program {
 			} else
 				Console.WriteLine($"Could not find requested grammar '{text}'.");
 		}
+		return null;
 	}
-	private static void OobEnableGrammar(XmlElement element)
+	private static string? OobEnableGrammar(XmlElement element)
 		=> OobEnableGrammar(element.InnerText);
-	private static void OobEnableGrammar(string text) {
+	private static string? OobEnableGrammar(string text) {
 		if (!enabledGrammarPaths.Contains(text)) {
 			if (grammars.TryGetValue(text, out var grammar)) {
 				Console.WriteLine($"Enabling grammar '{text}'");
@@ -493,6 +427,7 @@ public class Program {
 			} else
 				Console.WriteLine($"Could not find requested grammar '{text}'.");
 		}
+		return null;
 	}
 
 	private static void Bot_LogMessage(object? sender, LogMessageEventArgs e) {
@@ -528,16 +463,4 @@ public enum PartialInputMode {
 	On = 1,
 	/// <summary>Partial input will be processed with no cooldown.</summary>
 	Continuous = 2
-}
-
-public class Reply {
-	public string Text;
-	public string Postback;
-
-	public Reply(string text, string postback) {
-		if (string.IsNullOrEmpty(text)) throw new ArgumentException($"'{nameof(text)}' cannot be null or empty.", nameof(text));
-		if (string.IsNullOrEmpty(postback)) throw new ArgumentException($"'{nameof(postback)}' cannot be null or empty.", nameof(postback));
-		this.Text = text;
-		this.Postback = postback;
-	}
 }

@@ -131,7 +131,9 @@ public class AimlLoader {
 		if (elementHandlers.TryGetValue(el.Name, out var handler))
 			return handler(el, this);
 		var type = typeof(TemplateNode).Assembly.GetType($"{nameof(Aiml)}.{nameof(Tags)}.{el.Name}", false, true);
-		return type is not null ? (TemplateNode) this.ParseElementInternal(el, type) : this.ForwardCompatible ? Tags.Oob.FromXml(el, this) : throw new AimlException($"'{el.Name}' is not a valid AIML {AimlVersion} tag.");
+		return type is not null ? (TemplateNode) this.ParseElementInternal(el, type)
+			: this.bot.MediaElements.ContainsKey(el.Name) || this.ForwardCompatible ? Tags.Oob.FromXml(el, this)
+			: throw new AimlException($"'{el.Name}' is not a valid AIML {AimlVersion} tag.");
 	}
 	public object ParseElement(XmlElement el, Type type) => type.Name.Equals(el.Name, StringComparison.OrdinalIgnoreCase)
 		? this.ParseElementInternal(el, type)

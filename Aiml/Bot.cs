@@ -2,10 +2,11 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Aiml.Media;
 
 namespace Aiml;
 public class Bot {
-	public delegate string OobHandler(XmlElement element);
+	public delegate string? OobHandler(XmlElement element);
 
 	public static Version Version { get; } = typeof(Bot).Assembly.GetName().Version!;
 
@@ -26,6 +27,25 @@ public class Bot {
 	// TODO: private Dictionary<string, TagHandler> CustomTags = new(StringComparer.OrdinalIgnoreCase);
 	public Dictionary<string, OobHandler> OobHandlers { get; } = new();
 	public Dictionary<string, ISraixService> SraixServices { get; } = new(StringComparer.OrdinalIgnoreCase);
+	public Dictionary<string, (MediaElementType type, Func<Bot, XmlElement, IMediaElement> reviver)> MediaElements { get; } = new(StringComparer.OrdinalIgnoreCase) {
+		{ "button", (MediaElementType.Block, Button.FromXml) },
+		{ "br", (MediaElementType.Inline, LineBreak.FromXml) },
+		{ "break", (MediaElementType.Inline, LineBreak.FromXml) },
+		{ "card", (MediaElementType.Block, Card.FromXml) },
+		{ "carousel", (MediaElementType.Block, Carousel.FromXml) },
+		{ "delay", (MediaElementType.Separator, Delay.FromXml) },
+		{ "image", (MediaElementType.Block, Image.FromXml) },
+		{ "img", (MediaElementType.Block, Image.FromXml) },
+		{ "hyperlink", (MediaElementType.Inline, Link.FromXml) },
+		{ "link", (MediaElementType.Inline, Link.FromXml) },
+		{ "list", (MediaElementType.Inline, List.FromXml) },
+		{ "ul", (MediaElementType.Inline, List.FromXml) },
+		{ "ol", (MediaElementType.Inline, OrderedList.FromXml) },
+		{ "olist", (MediaElementType.Inline, OrderedList.FromXml) },
+		{ "reply", (MediaElementType.Block, Reply.FromXml) },
+		{ "split", (MediaElementType.Separator, Split.FromXml) },
+		{ "video", (MediaElementType.Block, Video.FromXml) },
+	};
 
 	public AimlLoader? AimlLoader { get; internal set; }
 
