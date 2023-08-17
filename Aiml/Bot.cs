@@ -1,47 +1,43 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace Aiml;
 public class Bot {
+	public delegate string OobHandler(XmlElement element);
+
 	public static Version Version { get; } = typeof(Bot).Assembly.GetName().Version!;
 
 	public string ConfigDirectory { get; set; }
-	public Config Config { get; set; }
-
-	// TODO: private Dictionary<string, TagHandler> CustomTags;
+	public Config Config { get; set; } = new();
 
 	public DateTime StartedOn = DateTime.Now;
-	public int Size;
-	public int Vocabulary;
-	public PatternNode Graphmaster;
+	public int Size { get; internal set; }
+	public int Vocabulary { get; internal set; }
+	public PatternNode Graphmaster { get; } = new(null, StringComparer.CurrentCultureIgnoreCase);
 	internal readonly Random Random = new();
 
 	public Dictionary<string, string> Properties => this.Config.BotProperties;
-	public Dictionary<string, Set> Sets;
-	public Dictionary<string, Map> Maps;
-	public TripleCollection Triples;
+	public Dictionary<string, Set> Sets { get; } = new(StringComparer.CurrentCultureIgnoreCase);
+	public Dictionary<string, Map> Maps { get; } = new(StringComparer.CurrentCultureIgnoreCase);
+	public TripleCollection Triples = new();
+
+	// TODO: private Dictionary<string, TagHandler> CustomTags = new(StringComparer.OrdinalIgnoreCase);
+	public Dictionary<string, OobHandler> OobHandlers { get; } = new();
+	public Dictionary<string, ISraixService> SraixServices { get; } = new(StringComparer.OrdinalIgnoreCase);
 
 	public AimlLoader? AimlLoader { get; internal set; }
 
-	public Dictionary<string, ISraixService> SraixServices = new(StringComparer.InvariantCultureIgnoreCase);
-
 	public event EventHandler<GossipEventArgs>? Gossip;
 	public event EventHandler<LogMessageEventArgs>? LogMessage;
+
 	protected void OnGossip(GossipEventArgs e) => this.Gossip?.Invoke(this, e);
 	protected void OnLogMessage(LogMessageEventArgs e) => this.LogMessage?.Invoke(this, e);
 
 	public Bot() : this("config") { }
 	public Bot(string configDirectory) {
-		this.Config = new Config();
 		this.ConfigDirectory = configDirectory;
-		this.Graphmaster = new PatternNode(null, StringComparer.CurrentCultureIgnoreCase);
-		this.Sets = new Dictionary<string, Set>(StringComparer.CurrentCultureIgnoreCase);
-		this.Maps = new Dictionary<string, Map>(StringComparer.CurrentCultureIgnoreCase);
-		this.Triples = new TripleCollection();
-		//this.CustomTags = new Dictionary<string, TagHandler>(StringComparer.InvariantCultureIgnoreCase);
 
 		// Add predefined sets and maps.
 		var inflector = new Inflector(StringComparer.CurrentCultureIgnoreCase);
@@ -259,10 +255,6 @@ public class Bot {
 		process.Log(LogLevel.Gossip, "Gossip from " + process.User.ID + ": " + message);
 	}
 
-	public Response Chat(string message, string userID, bool trace) {
-		var request = new Request(message, new User(userID, this), this);
-		return this.ProcessRequest(request, trace, false, 0, out _);
-	}
 	public Response Chat(Request request, bool trace) {
 		this.Log(LogLevel.Chat, request.User.ID + ": " + request.Text);
 		request.User.AddRequest(request);
@@ -326,13 +318,32 @@ public class Bot {
 			process.Finish();
 		}
 
-		var response = new Response(request, builder.ToString());
-		request.Response = response;
-
-		stopwatch.Stop();
+		var text = this.ProcessOobElements(builder);
 		duration = stopwatch.Elapsed;
+
+		var response = new Response(request, text);
+		request.Response = response;
 		return response;
 	}
+
+	private string ProcessOobElements(StringBuilder builder) => Regex.Replace(builder.ToString(), @"<\s*oob\s*>.*?<(/?)\s*oob\s*>", m => {
+		if (m.Groups[1].Value == "") {
+			this.Log(LogLevel.Warning, "Cannot process nested <oob> elements.");
+			return m.Value;
+		}
+		var xmlDocument = new XmlDocument();
+		var builder = new StringBuilder();
+		xmlDocument.LoadXml(m.Value);
+		foreach (var childElement in xmlDocument.DocumentElement!.ChildNodes.OfType<XmlElement>()) {
+			if (this.OobHandlers.TryGetValue(childElement.Name, out var handler))
+				builder.Append(handler(childElement));
+			else {
+				this.Log(LogLevel.Warning, $"No handler found for <oob> element <{childElement.Name}>.");
+				builder.Append(childElement.OuterXml);
+			}
+		}
+		return builder.ToString();
+	});
 
 	public string[] SentenceSplit(string text, bool preserveMarks) {
 		if (this.Config.Splitters.Length == 0) {
