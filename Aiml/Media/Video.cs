@@ -7,5 +7,5 @@ namespace Aiml.Media;
 public class Video(string url) : IMediaElement {
 	public string Url { get; } = url;
 
-	public static Video FromXml(Bot bot, XmlElement element) => new(element.InnerText);
+	public static Video FromXml(XmlElement element) => new(element.InnerText);
 }

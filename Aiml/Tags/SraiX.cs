@@ -31,7 +31,7 @@ public sealed class SraiX(TemplateElementCollection service, TemplateElementColl
 	public override string Evaluate(RequestProcess process) {
 		var serviceName = this.ServiceName.Evaluate(process);
 		try {
-			if (process.Bot.SraixServices.TryGetValue(serviceName, out var service)) {
+			if (AimlLoader.sraixServices.TryGetValue(serviceName, out var service)) {
 				var text = this.Children?.Evaluate(process) ?? "";
 				process.Log(LogLevel.Diagnostic, "In element <sraix>: querying service '" + serviceName + "' to process text '" + text + "'.");
 				text = service.Process(text, this.Attributes, process);

@@ -13,7 +13,7 @@ public class Reply(string text, string postback) : IMediaElement {
 	public string Text { get; } = text;
 	public string Postback { get; } = postback;
 
-	public static Reply FromXml(Bot bot, XmlElement el) {
+	public static Reply FromXml(XmlElement el) {
 		string? text = null, postback = null;
 
 		foreach (var el2 in el.ChildNodes.OfType<XmlElement>()) {

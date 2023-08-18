@@ -22,7 +22,7 @@ public class Response(Request request, string text) {
 		var builder = new StringBuilder();
 		xmlDocument.LoadXml(m.Value);
 		foreach (var childElement in xmlDocument.DocumentElement!.ChildNodes.OfType<XmlElement>()) {
-			if (this.Bot.OobHandlers.TryGetValue(childElement.Name, out var handler))
+			if (AimlLoader.oobHandlers.TryGetValue(childElement.Name, out var handler))
 				builder.Append(handler(childElement));
 			else {
 				this.Bot.Log(LogLevel.Warning, $"No handler found for <oob> element <{childElement.Name}>.");
@@ -67,17 +67,17 @@ public class Response(Request request, string text) {
 					break;
 				default:
 					if (node is XmlElement element) {
-						if (this.Bot.MediaElements.TryGetValue(element.Name, out var data)) {
+						if (AimlLoader.mediaElements.TryGetValue(element.Name, out var data)) {
 							if (data.type == MediaElementType.Separator) {
 								if (currentMessage is not null)
-									messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), data.reviver(this.Bot, element)));
+									messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), data.parser(element)));
 								currentMessage = (new(), new());
 							} else if (data.type == MediaElementType.Block) {
 								currentMessage ??= new(new(), new());
-								currentMessage.Value.blockElements.Add(data.reviver(this.Bot, element));
+								currentMessage.Value.blockElements.Add(data.parser(element));
 							} else {
 								currentMessage ??= new(new(), new());
-								currentMessage.Value.inlineElements.Add(data.reviver(this.Bot, element));
+								currentMessage.Value.inlineElements.Add(data.parser(element));
 							}
 						} else {
 							// If we don't know what type of media element it is, treat it as an inline one.

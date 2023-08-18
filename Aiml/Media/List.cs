@@ -5,5 +5,5 @@ namespace Aiml.Media;
 /// <remarks>This element is defined by the AIML 2.1 specification.</remarks>
 /// <seealso cref="OrderedList"/>
 public class List(List<IReadOnlyList<IMediaElement>> items) : ListBase(items) {
-	public static List FromXml(Bot bot, XmlElement element) => new(ParseItems(bot, element));
+	public static List FromXml(XmlElement element) => new(ParseItems(element));
 }

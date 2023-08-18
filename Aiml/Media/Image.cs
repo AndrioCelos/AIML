@@ -7,5 +7,5 @@ namespace Aiml.Media;
 public class Image(string url) : IMediaElement {
 	public string Url { get; } = url;
 
-	public static Image FromXml(Bot bot, XmlElement element) => new(element.InnerText);
+	public static Image FromXml(XmlElement element) => new(element.InnerText);
 }

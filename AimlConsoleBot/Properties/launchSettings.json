@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AimlConsoleBot": {
+      "commandName": "Project",
+      "commandLineArgs": "../../../../ExampleBot"
+    }
+  }
+}

@@ -6,11 +6,11 @@ namespace Aiml.Media;
 public abstract class ListBase(List<IReadOnlyList<IMediaElement>> items) : IMediaElement {
 	public IReadOnlyList<IReadOnlyList<IMediaElement>> Items { get; } = items.AsReadOnly();
 
-	protected static List<IReadOnlyList<IMediaElement>> ParseItems(Bot bot, XmlElement element) {
+	protected static List<IReadOnlyList<IMediaElement>> ParseItems(XmlElement element) {
 		var items = new List<IReadOnlyList<IMediaElement>>();
 		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
 			switch (childElement.Name.ToLowerInvariant()) {
-				case "item": case "li": items.Add(MediaElement.ParseInlineElements(bot, element).AsReadOnly()); break;
+				case "item": case "li": items.Add(MediaElement.ParseInlineElements(element).AsReadOnly()); break;
 				default: throw new AimlException($"Unknown attribute {childElement.Name} in list element.");
 			}
 		}

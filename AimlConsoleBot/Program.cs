@@ -1,56 +1,67 @@
 ﻿using Aiml;
+using Aiml.Media;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Linq;
 
 namespace AimlConsoleBot;
 internal class Program {
 	internal static int Main(string[] args) {
 		var switches = true; string? botPath = null;
+		var extensionPaths = new List<string>();
 		var inputs = new List<string>();
-		var sraixServicePaths = new List<string>();
+		List<Reply>? replies = null;
 
 		for (var i = 0; i < args.Length; ++i) {
 			var s = args[i];
 			if (switches && s.StartsWith("-")) {
-				if (s == "--")
-					switches = false;
-				else if (s is "-i" or "--input")
-					inputs.Add(args[++i]);
-				else if (s is "-s" or "--services")
-					sraixServicePaths.Add(args[++i]);
+				switch (s) {
+					case "--":
+						switches = false;
+						break;
+					case "-h":
+					case "--help":
+					case "-?":
+					case "/?":
+						Console.WriteLine($"Usage: {nameof(AimlConsoleBot)} [switches] <bot path>");
+						Console.WriteLine("Available switches:");
+						Console.WriteLine("  -e [path], --extension [path]: Load AIML extensions from the specified assembly.");
+						Console.WriteLine("  --: Stop processing switches.");
+						return 0;
+					case "-e":
+					case "--extension":
+					case "--extensions":
+					case "-S":
+					case "--service":
+					case "--services":
+						extensionPaths.Add(args[++i]);
+						break;
+					default:
+						Console.Error.WriteLine($"Unknown switch {s}");
+						Console.Error.WriteLine($"Use `{nameof(AimlConsoleBot)} --help` for more information.");
+						return 1;
+				}
 			} else {
 				switches = false;
 				botPath = s;
 			}
 		}
 		if (botPath == null) {
-			Console.Error.WriteLine("Usage: AimlConsoleBot <bot path>");
+			Console.Error.WriteLine($"Usage: {nameof(AimlConsoleBot)} [switches] <bot path>");
+			Console.Error.WriteLine($"Use `{nameof(AimlConsoleBot)} --help` for more information.");
 			return 1;
+		}
+
+		foreach (var path in extensionPaths) {
+			Console.WriteLine($"Loading extensions from {path}...");
+			AimlLoader.AddExtensions(path);
 		}
 
 		var bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
-
-		foreach (var path in sraixServicePaths) {
-			var assembly = Assembly.LoadFrom(path);
-			var found = false;
-			foreach (var type in assembly.GetExportedTypes()) {
-				if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
-					Console.WriteLine($"Initialising service {type.FullName} from {path}...");
-					found = true;
-					bot.SraixServices.Add(type.FullName!, (ISraixService) Activator.CreateInstance(type)!);
-				}
-			}
-			if (!found) {
-				Console.Error.WriteLine($"No services found in {path}.");
-				return 1;
-			}
-		}
-
 		bot.LoadConfig();
 		bot.LoadAIML();
-
+		var botName = bot.Properties.GetValueOrDefault("name", "Robot");
 		var user = new User("User", bot);
 
 		foreach (var s in inputs) {
@@ -60,17 +71,40 @@ internal class Program {
 
 		while (true) {
 			Console.Write("> ");
-			var message = Console.ReadLine();
-			if (message is null) break;
+			var input = Console.ReadLine();
+			if (input is null) break;
 
 			var trace = false;
-			if (message.StartsWith(".trace ")) {
-				trace = true;
-				message = message[7..];
+			if (input.StartsWith("/")) {
+				if (input.StartsWith("/trace ")) {
+					trace = true;
+					input = input[7..];
+				} else if (int.TryParse(input[1..], out var n)) {
+					if (replies is not null && n >= 0 && n < replies.Count) {
+						input = replies[n].Postback;
+					} else {
+						Console.WriteLine("No such reply.");
+						continue;
+					}
+				}
 			}
 
-			var response = bot.Chat(new Request(message, user, bot), trace);
-			Console.WriteLine($"{bot.Properties.GetValueOrDefault("name", "Robot")}: {response}");
+			var response = bot.Chat(new Request(input, user, bot), trace);
+			var messages = response.ToMessages();
+			replies = null;
+			foreach (var message in messages) {
+				Console.WriteLine($"{botName}: {message}");
+				if (message.BlockElements.OfType<Reply>().Any()) {
+					replies ??= new();
+					Console.ForegroundColor = ConsoleColor.DarkMagenta;
+					Console.WriteLine($"[Replies (type /number to reply): {string.Join(", ", message.BlockElements.OfType<Reply>().Select(r => {
+						var s = $"({replies.Count}) {r.Text}";
+						replies.Add(r);
+						return s;
+					}))}]");
+					Console.ResetColor();
+				}
+			}
 		}
 
 		return 0;

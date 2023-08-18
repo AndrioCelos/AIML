@@ -8,5 +8,5 @@ namespace Aiml.Media;
 ///	</remarks>
 ///	<seealso cref="Delay"/> <seealso cref="LineBreak"/>
 public class Split : IMediaElement {
-	public static Split FromXml(Bot bot, XmlElement element) => new();
+	public static Split FromXml(XmlElement _) => new();
 }

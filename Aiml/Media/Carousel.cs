@@ -6,11 +6,11 @@ namespace Aiml.Media;
 public class Carousel(List<Card> cards) : IMediaElement {
 	public IReadOnlyList<Card> Cards { get; } = cards.AsReadOnly();
 
-	public static Carousel FromXml(Bot bot, XmlElement element) {
+	public static Carousel FromXml(XmlElement element) {
 		var cards = new List<Card>();
 		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
 			switch (childElement.Name.ToLowerInvariant()) {
-				case "card": cards.Add(Card.FromXml(bot, childElement)); break;
+				case "card": cards.Add(Card.FromXml(childElement)); break;
 				default: throw new AimlException($"Unknown attribute {childElement.Name} in <carousel> element.");
 			}
 		}

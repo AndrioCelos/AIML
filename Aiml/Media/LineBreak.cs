@@ -7,5 +7,5 @@ namespace Aiml.Media;
 ///		<para>This element is part of the Pandorabots extension of AIML.</para>
 ///	</remarks>
 public class LineBreak : IMediaElement {
-	public static LineBreak FromXml(Bot bot, XmlElement element) => new();
+	public static LineBreak FromXml(XmlElement _) => new();
 }

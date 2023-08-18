@@ -13,7 +13,7 @@ public class Button(string text, string? postback, string? url) : IMediaElement 
 	public string? Postback { get; } = postback;
 	public string? Url { get; } = url;
 
-	public static Button FromXml(Bot bot, XmlElement element) {
+	public static Button FromXml(XmlElement element) {
 		string? text = null, postback = null, url = null;
 		var hasPostback = false;
 		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {

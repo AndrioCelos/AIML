@@ -2,61 +2,39 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
-using Aiml.Media;
 
 namespace Aiml;
 public class Bot {
-	public delegate string? OobHandler(XmlElement element);
 
 	public static Version Version { get; } = typeof(Bot).Assembly.GetName().Version!;
 
 	public string ConfigDirectory { get; set; }
 	public Config Config { get; set; } = new();
 
-	public DateTime StartedOn = DateTime.Now;
 	public int Size { get; internal set; }
 	public int Vocabulary { get; internal set; }
 	public PatternNode Graphmaster { get; } = new(null, StringComparer.CurrentCultureIgnoreCase);
-	internal readonly Random Random = new();
 
 	public Dictionary<string, string> Properties => this.Config.BotProperties;
 	public Dictionary<string, Set> Sets { get; } = new(StringComparer.CurrentCultureIgnoreCase);
 	public Dictionary<string, Map> Maps { get; } = new(StringComparer.CurrentCultureIgnoreCase);
-	public TripleCollection Triples = new();
+	public TripleCollection Triples { get; } = new();
 
-	// TODO: private Dictionary<string, TagHandler> CustomTags = new(StringComparer.OrdinalIgnoreCase);
-	public Dictionary<string, OobHandler> OobHandlers { get; } = new(StringComparer.OrdinalIgnoreCase);
-	public Dictionary<string, ISraixService> SraixServices { get; } = new(StringComparer.OrdinalIgnoreCase);
-	public Dictionary<string, (MediaElementType type, Func<Bot, XmlElement, IMediaElement> reviver)> MediaElements { get; } = new(StringComparer.OrdinalIgnoreCase) {
-		{ "button", (MediaElementType.Block, Button.FromXml) },
-		{ "br", (MediaElementType.Inline, LineBreak.FromXml) },
-		{ "break", (MediaElementType.Inline, LineBreak.FromXml) },
-		{ "card", (MediaElementType.Block, Card.FromXml) },
-		{ "carousel", (MediaElementType.Block, Carousel.FromXml) },
-		{ "delay", (MediaElementType.Separator, Delay.FromXml) },
-		{ "image", (MediaElementType.Block, Image.FromXml) },
-		{ "img", (MediaElementType.Block, Image.FromXml) },
-		{ "hyperlink", (MediaElementType.Inline, Link.FromXml) },
-		{ "link", (MediaElementType.Inline, Link.FromXml) },
-		{ "list", (MediaElementType.Inline, List.FromXml) },
-		{ "ul", (MediaElementType.Inline, List.FromXml) },
-		{ "ol", (MediaElementType.Inline, OrderedList.FromXml) },
-		{ "olist", (MediaElementType.Inline, OrderedList.FromXml) },
-		{ "reply", (MediaElementType.Block, Reply.FromXml) },
-		{ "split", (MediaElementType.Separator, Split.FromXml) },
-		{ "video", (MediaElementType.Block, Video.FromXml) },
-	};
-
-	public AimlLoader? AimlLoader { get; internal set; }
+	public AimlLoader AimlLoader { get; }
 
 	public event EventHandler<GossipEventArgs>? Gossip;
 	public event EventHandler<LogMessageEventArgs>? LogMessage;
+	public event EventHandler<PostbackRequestEventArgs>? PostbackRequest;
+	public event EventHandler<PostbackResponseEventArgs>? PostbackResponse;
 
-	protected void OnGossip(GossipEventArgs e) => this.Gossip?.Invoke(this, e);
-	protected void OnLogMessage(LogMessageEventArgs e) => this.LogMessage?.Invoke(this, e);
+	public void OnGossip(GossipEventArgs e) => this.Gossip?.Invoke(this, e);
+	public void OnLogMessage(LogMessageEventArgs e) => this.LogMessage?.Invoke(this, e);
+
+	internal readonly Random Random = new();
 
 	public Bot() : this("config") { }
 	public Bot(string configDirectory) {
+		this.AimlLoader = new(this);
 		this.ConfigDirectory = configDirectory;
 
 		// Add predefined sets and maps.
@@ -68,21 +46,14 @@ public class Bot {
 		this.Maps.Add("plural", new Maps.PluralMap(inflector));
 	}
 
-	public void LoadAIML() {
-		var aIMLLoader = new AimlLoader(this);
-		aIMLLoader.LoadAimlFiles();
-	}
-	public void LoadAIML(XmlDocument newAIML, string filename) {
-		var aIMLLoader = new AimlLoader(this);
-		aIMLLoader.LoadAIML(newAIML, filename);
-	}
+	public void LoadAIML() => this.AimlLoader.LoadAimlFiles();
 
 	public void LoadConfig() {
 		this.Config = Config.FromFile(Path.Combine(this.ConfigDirectory, "config.json"));
 		this.LoadConfig2();
 	}
 
-	public void LoadConfig2() {
+	private void LoadConfig2() {
 		this.CheckDefaultProperties();
 
 		var inflector = new Inflector(this.Config.StringComparer);
@@ -279,6 +250,7 @@ public class Bot {
 		process.Log(LogLevel.Gossip, "Gossip from " + process.User.ID + ": " + message);
 	}
 
+	public Response Chat(Request request) => this.Chat(request, false);
 	public Response Chat(Request request, bool trace) {
 		this.Log(LogLevel.Chat, request.User.ID + ": " + request.Text);
 		request.User.AddRequest(request);
@@ -290,6 +262,13 @@ public class Bot {
 
 		response.ProcessOobElements();
 		request.User.AddResponse(response);
+		return response;
+	}
+
+	public Response Postback(Request request) {
+		this.PostbackRequest?.Invoke(this, new(request));
+		var response = this.Chat(request);
+		this.PostbackResponse?.Invoke(this, new(response));
 		return response;
 	}
 

@@ -10,7 +10,7 @@ public class Card(string? imageUrl, string? title, string? subtitle, List<Button
 	public string? Subtitle { get; } = subtitle;
 	public IReadOnlyList<Button> Buttons { get; } = buttons?.AsReadOnly() ?? Array.AsReadOnly(Array.Empty<Button>());
 
-	public static Card FromXml(Bot bot, XmlElement element) {
+	public static Card FromXml(XmlElement element) {
 		string? imageUrl = null, title = null, subtitle = null;
 		List<Button>? buttons = null;
 		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
@@ -20,7 +20,7 @@ public class Card(string? imageUrl, string? title, string? subtitle, List<Button
 				case "subtitle": subtitle = childElement.InnerText; break;
 				case "button":
 					buttons ??= new();
-					buttons.Add(Button.FromXml(bot, childElement));
+					buttons.Add(Button.FromXml(childElement));
 					break;
 				default: throw new AimlException($"Unknown attribute {childElement.Name} in <card> element.");
 			}

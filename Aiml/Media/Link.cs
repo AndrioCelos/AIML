@@ -8,7 +8,7 @@ public class Link(string text, string url) : IMediaElement {
 	public string Text { get; } = text;
 	public string Url { get; } = url;
 
-	public static Link FromXml(Bot bot, XmlElement element) {
+	public static Link FromXml(XmlElement element) {
 		string? text = null, url = null;
 		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
 			switch (childElement.Name.ToLowerInvariant()) {

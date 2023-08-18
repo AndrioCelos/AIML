@@ -4,55 +4,66 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 
-namespace AimlConsoleBot; 
+namespace AimlTester;
 internal class Program {
 	internal static int warnings;
 
 	internal static int Main(string[] args) {
 		var switches = true; string? botPath = null; string? testPath = null;
+		var extensionPaths = new List<string>();
 		var inputs = new List<string>();
-		var sraixServicePaths = new List<string>();
 
 		for (var i = 0; i < args.Length; ++i) {
 			var s = args[i];
 			if (switches && s.StartsWith("-")) {
-				if (s == "--")
-					switches = false;
-				else if (s is "-i" or "--input")
-					inputs.Add(args[++i]);
-				else if (s is "-s" or "--services")
-					sraixServicePaths.Add(args[++i]);
-				else if (s is "-t" or "--test")
-					testPath = args[++i];
+				switch (s) {
+					case "--":
+						switches = false;
+						break;
+					case "-h":
+					case "--help":
+					case "-?":
+					case "/?":
+						Console.WriteLine($"Usage: {nameof(AimlTester)} [switches] -t <test subpath> <bot path>");
+						Console.WriteLine("Available switches:");
+						Console.WriteLine("  -e [path], --extension [path]: Load AIML extensions from the specified assembly.");
+						Console.WriteLine("  --: Stop processing switches.");
+						return 0;
+					case "-t":
+					case "--test":
+						testPath = args[++i];
+						break;
+					case "-e":
+					case "--extension":
+					case "--extensions":
+					case "-S":
+					case "--service":
+					case "--services":
+						extensionPaths.Add(args[++i]);
+						break;
+					default:
+						Console.Error.WriteLine($"Unknown switch {s}");
+						Console.Error.WriteLine($"Use `{nameof(AimlTester)} --help` for more information.");
+						return 1;
+				}
 			} else {
 				switches = false;
 				botPath = s;
 			}
 		}
 		if (botPath == null || testPath == null) {
-			Console.Error.WriteLine("Usage: AimlTester -t <test subpath> <bot path>");
+			Console.Error.WriteLine($"Usage: {nameof(AimlTester)} [switches] -t <test subpath> <bot path>");
+			Console.Error.WriteLine($"Use `{nameof(AimlTester)} --help` for more information.");
 			return 1;
+		}
+
+		foreach (var path in extensionPaths) {
+			Console.WriteLine($"Loading extensions from {path}...");
+			AimlLoader.AddExtensions(path);
 		}
 
 		var bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
-
-		foreach (var path in sraixServicePaths) {
-			var assembly = Assembly.LoadFrom(path);
-			var found = false;
-			foreach (var type in assembly.GetExportedTypes()) {
-				if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
-					Console.WriteLine($"Initialising service {type.FullName} from {path}...");
-					found = true;
-					bot.SraixServices.Add(type.FullName!, (ISraixService) Activator.CreateInstance(type)!);
-				}
-			}
-			if (!found) {
-				Console.Error.WriteLine($"No services found in {path}.");
-				return 1;
-			}
-		}
-
 		bot.LoadConfig();
 		bot.LoadAIML();
 		bot.AimlLoader!.LoadAimlFiles(Path.Combine(botPath, testPath!));

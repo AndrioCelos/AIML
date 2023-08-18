@@ -11,5 +11,5 @@ namespace Aiml.Media;
 public class Delay(TimeSpan duration) : IMediaElement {
 	public TimeSpan Duration { get; } = duration;
 
-	public static Delay FromXml(Bot bot, XmlElement element) => new(TimeSpan.FromSeconds(double.TryParse(element.InnerText, out var d) && d >= 0 ? d : throw new AimlException("Invalid duration in <delay> element.")));
+	public static Delay FromXml(XmlElement element) => new(TimeSpan.FromSeconds(double.TryParse(element.InnerText, out var d) && d >= 0 ? d : throw new AimlException("Invalid duration in <delay> element.")));
 }

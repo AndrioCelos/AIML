@@ -1,60 +1,130 @@
+using Aiml.Media;
 using System.Reflection;
 using System.Xml;
-#if !NET6_0_OR_GREATER
-using NullabilityInfoContext = Nullability.NullabilityInfoContextEx;
-using NullabilityState = Nullability.NullabilityStateEx;
-#endif
 
 namespace Aiml;
-public delegate TemplateNode ElementHandler(XmlElement element, AimlLoader loader);
+public delegate TemplateNode TemplateTagParser(XmlElement element, AimlLoader loader);
+public delegate string? OobReplacementHandler(XmlElement element);
+public delegate void OobHandler(XmlElement element);
+public delegate IMediaElement MediaElementParser(XmlElement element);
 
-public class AimlLoader {
-	private readonly Bot bot;
+public class AimlLoader(Bot bot) {
+	private readonly Bot bot = bot;
 
-	private static readonly Dictionary<string, ElementHandler> elementHandlers = new(StringComparer.InvariantCultureIgnoreCase) {
+	internal static readonly Dictionary<string, TemplateTagParser> tags = new(StringComparer.InvariantCultureIgnoreCase) {
 		// Elements that the reflection method can't handle
-		{ "oob"     , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "select"  , Tags.Select.FromXml },
+		{ "oob"      , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "select"   , Tags.Select.FromXml },
 
 		// AIML 2.1 draft rich media elements
-		{ "button"  , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback", "url") },
-		{ "reply"   , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback") },
-		{ "link"    , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "url") },
-		{ "image"   , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "video"   , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "card"    , (node, loader) => Tags.Oob.FromXml(node, loader, "image", "title", "subtitle", "button") },
-		{ "carousel", (node, loader) => Tags.Oob.FromXml(node, loader, "card") },
-		{ "delay"   , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "split"   , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "list"    , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-		{ "olist"   , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
+		{ "button"   , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback", "url") },
+		{ "br"       , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "break"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "card"     , (node, loader) => Tags.Oob.FromXml(node, loader, "image", "title", "subtitle", "button") },
+		{ "carousel" , (node, loader) => Tags.Oob.FromXml(node, loader, "card") },
+		{ "delay"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "image"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "img"      , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "hyperlink", (node, loader) => Tags.Oob.FromXml(node, loader, "text", "url") },
+		{ "link"     , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "url") },
+		{ "list"     , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
+		{ "ul"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
+		{ "ol"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
+		{ "olist"    , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
+		{ "reply"    , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback") },
+		{ "split"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "video"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
 
 		// Invalid template-level elements
-		{ "eval"    , SubtagHandler },
-		{ "q"       , SubtagHandler },
-		{ "notq"    , SubtagHandler },
-		{ "vars"    , SubtagHandler },
-		{ "subj"    , SubtagHandler },
-		{ "pred"    , SubtagHandler },
-		{ "obj"     , SubtagHandler },
-		{ "text"    , SubtagHandler },
-		{ "postback", SubtagHandler },
-		{ "url"     , SubtagHandler },
-		{ "title"   , SubtagHandler },
-		{ "subtitle", SubtagHandler },
-		{ "item"    , SubtagHandler }
+		{ "eval"     , SubtagHandler },
+		{ "q"        , SubtagHandler },
+		{ "notq"     , SubtagHandler },
+		{ "vars"     , SubtagHandler },
+		{ "subj"     , SubtagHandler },
+		{ "pred"     , SubtagHandler },
+		{ "obj"      , SubtagHandler },
+		{ "text"     , SubtagHandler },
+		{ "postback" , SubtagHandler },
+		{ "url"      , SubtagHandler },
+		{ "title"    , SubtagHandler },
+		{ "subtitle" , SubtagHandler },
+		{ "item"     , SubtagHandler }
 	};
-	private static readonly Dictionary<Type, TemplateElementBuilder> elementBuilders = new();
+	internal static readonly Dictionary<string, (MediaElementType type, MediaElementParser parser)> mediaElements = new(StringComparer.OrdinalIgnoreCase) {
+		{ "button"   , (MediaElementType.Block, Button.FromXml) },
+		{ "br"       , (MediaElementType.Inline, LineBreak.FromXml) },
+		{ "break"    , (MediaElementType.Inline, LineBreak.FromXml) },
+		{ "card"     , (MediaElementType.Block, Card.FromXml) },
+		{ "carousel" , (MediaElementType.Block, Carousel.FromXml) },
+		{ "delay"    , (MediaElementType.Separator, Delay.FromXml) },
+		{ "image"    , (MediaElementType.Block, Image.FromXml) },
+		{ "img"      , (MediaElementType.Block, Image.FromXml) },
+		{ "hyperlink", (MediaElementType.Inline, Link.FromXml) },
+		{ "link"     , (MediaElementType.Inline, Link.FromXml) },
+		{ "list"     , (MediaElementType.Inline, List.FromXml) },
+		{ "ul"       , (MediaElementType.Inline, List.FromXml) },
+		{ "ol"       , (MediaElementType.Inline, OrderedList.FromXml) },
+		{ "olist"    , (MediaElementType.Inline, OrderedList.FromXml) },
+		{ "reply"    , (MediaElementType.Block, Reply.FromXml) },
+		{ "split"    , (MediaElementType.Separator, Split.FromXml) },
+		{ "video"    , (MediaElementType.Block, Video.FromXml) },
+	};
+	internal static readonly Dictionary<string, OobReplacementHandler> oobHandlers = new(StringComparer.OrdinalIgnoreCase);
+	internal static readonly Dictionary<string, ISraixService> sraixServices = new(StringComparer.OrdinalIgnoreCase);
+	private static readonly Dictionary<Type, TemplateElementBuilder> childElementBuilders = new();
+
 	public static Version AimlVersion => new(2, 1);
 	/// <summary>Whether this loader is loading a newer version of AIML or an <see cref="Tags.Oob"/> element.</summary>
 	public bool ForwardCompatible { get; internal set; }
 
-	public AimlLoader(Bot bot) {
-		this.bot = bot;
-		this.bot.AimlLoader = this;
+	static AimlLoader() {
+		foreach (var type in typeof(TemplateNode).Assembly.GetTypes().Where(t => !t.IsAbstract && typeof(TemplateNode).IsAssignableFrom(t))) {
+			var elementName = type.Name.ToLowerInvariant();
+			if (tags.ContainsKey(elementName)) continue;
+
+			var builder = new TemplateElementBuilder(type);
+			tags[elementName] = (el, loader) => (TemplateNode) builder.Parse(el, loader);
+		}
 	}
 
 	private static TemplateNode SubtagHandler(XmlElement el, AimlLoader loader) => loader.ForwardCompatible ? Tags.Oob.FromXml(el, loader) : throw new AimlException($"The <{el.Name}> tag is not valid here.");
+
+	public static void AddExtension(IAimlExtension extension) => extension.Initialise();
+#if NET5_0_OR_GREATER
+	public static void AddExtensions(string path) {
+		var assemblyName = AssemblyName.GetAssemblyName(path);
+		var loadContext = new PluginLoadContext(Path.GetFullPath(path));
+		var assembly = loadContext.LoadFromAssemblyName(assemblyName);
+		var found = false;
+		foreach (var type in assembly.GetExportedTypes()) {
+			if (!type.IsAbstract && typeof(IAimlExtension).IsAssignableFrom(type)) {
+				found = true;
+				AddExtension((IAimlExtension) Activator.CreateInstance(type)!);
+			}
+		}
+		if (!found) throw new ArgumentException($"No {nameof(IAimlExtension)} types found in the specified assembly: {path}");
+	}
+#endif
+
+	public static void AddCustomTag(Type type) => AddCustomTag(type.Name.ToLowerInvariant(), type);
+	public static void AddCustomTag(string elementName, Type type) {
+		var builder = new TemplateElementBuilder(type);
+		tags.Add(elementName, (el, loader) => (TemplateNode) builder.Parse(el, loader));
+	}
+	public static void AddCustomTag(string elementName, TemplateTagParser parser) => tags.Add(elementName, parser);
+
+	public static void AddCustomMediaElement(string elementName, MediaElementType mediaElementType, MediaElementParser parser, params string[] childElementNames) {
+		tags.Add(elementName, (node, loader) => Tags.Oob.FromXml(node, loader, childElementNames));
+		mediaElements.Add(elementName, (mediaElementType, parser));
+	}
+
+	public static void AddCustomOobHandler(string elementName, OobHandler handler) => oobHandlers.Add(elementName, el => { handler(el); return null; });
+	public static void AddCustomOobHandler(string elementName, OobReplacementHandler handler) => oobHandlers.Add(elementName, handler);
+
+	public static void AddCustomSraixService(ISraixService service) {
+		sraixServices.Add(service.GetType().Name, service);
+		sraixServices.Add(service.GetType().FullName!, service);
+	}
 
 	public void LoadAimlFiles() => this.LoadAimlFiles(Path.Combine(this.bot.ConfigDirectory, this.bot.Config.AimlDirectory));
 	public void LoadAimlFiles(string path) {
@@ -76,12 +146,13 @@ public class AimlLoader {
 		xmlDocument.Load(filename);
 		this.LoadAIML(xmlDocument, filename);
 	}
-
+	public void LoadAIML(XmlDocument document) => this.LoadAIML(document, "*");
 	public void LoadAIML(XmlDocument document, string filename) {
 		if (document.DocumentElement is null || !document.DocumentElement.Name.Equals("aiml", StringComparison.OrdinalIgnoreCase))
 			throw new ArgumentException("The specified XML document is not a valid AIML document.", nameof(document));
 		this.LoadAIML(this.bot.Graphmaster, document.DocumentElement, filename);
 	}
+	public void LoadAIML(PatternNode target, XmlElement document) => this.LoadAIML(target, document, "*");
 	public void LoadAIML(PatternNode target, XmlElement document, string filename) {
 		var versionString = document.GetAttribute("version");
 		this.ForwardCompatible = !Version.TryParse(versionString, out var version) || version > AimlVersion;
@@ -129,21 +200,15 @@ public class AimlLoader {
 		this.bot.Size++;
 	}
 
-	public TemplateNode ParseElement(XmlElement el) {
-		if (elementHandlers.TryGetValue(el.Name, out var handler))
-			return handler(el, this);
-		var type = typeof(TemplateNode).Assembly.GetType($"{nameof(Aiml)}.{nameof(Tags)}.{el.Name}", false, true);
-		return type is not null ? (TemplateNode) this.ParseElementInternal(el, type)
-			: this.bot.MediaElements.ContainsKey(el.Name) || this.ForwardCompatible ? Tags.Oob.FromXml(el, this)
-			: throw new AimlException($"'{el.Name}' is not a valid AIML {AimlVersion} tag.");
-	}
-	public object ParseElement(XmlElement el, Type type) => type.Name.Equals(el.Name, StringComparison.OrdinalIgnoreCase)
-		? this.ParseElementInternal(el, type)
-		: throw new ArgumentException($"Element name <{el.Name}> does not match expected <{type.Name.ToLowerInvariant()}>.");
-	internal T ParseElementInternal<T>(XmlElement el) => (T) this.ParseElementInternal(el, typeof(T));
-	internal object ParseElementInternal(XmlElement el, Type type) {
-		if (!elementBuilders.TryGetValue(type, out var builder))
-			builder = elementBuilders[type] = new(type);
+	public TemplateNode ParseElement(XmlElement el)
+		=> tags.TryGetValue(el.Name, out var handler) ? handler(el, this)
+			: this.ForwardCompatible || mediaElements.ContainsKey(el.Name) ? Tags.Oob.FromXml(el, this)
+			: throw new AimlException($"<{el.Name}> is not a valid AIML {AimlVersion} tag.");
+
+	internal T ParseChildElementInternal<T>(XmlElement el) => (T) this.ParseChildElementInternal(el, typeof(T));
+	internal object ParseChildElementInternal(XmlElement el, Type type) {
+		if (!childElementBuilders.TryGetValue(type, out var builder))
+			builder = childElementBuilders[type] = new(type);
 		return builder.Parse(el, this);
 	}
 
@@ -177,125 +242,5 @@ public class AimlLoader {
 			}
 		}
 		return tokens;
-	}
-
-	private class TemplateElementBuilder {
-		private readonly ConstructorInfo constructor;
-		private readonly AimlParameterData[] parameterData;
-		private readonly int? contentParamIndex;
-
-		public TemplateElementBuilder(Type type) {
-			// If there is a constructor with the appropriate attribute, use that; otherwise use the first constructor, which will be the primary constructor if the type has one.
-			var constructors = type.GetConstructors();
-			var constructor = constructors.FirstOrDefault(c => c.GetCustomAttribute<AimlLoaderContructorAttribute>() is not null) ?? constructors[0];
-			this.constructor = constructor;
-
-			var nullabilityInfoContext = new NullabilityInfoContext();
-
-			// Analyze the constructor parameters.
-			var parameters = constructor.GetParameters();
-			this.parameterData = new AimlParameterData[parameters.Length];
-			for (var i = 0; i < parameters.Length; i++) {
-				var param = parameters[i];
-				if (param.ParameterType == typeof(TemplateElementCollection)) {
-					// Either an attribute parameter or the children parameter.
-					if (param.Name == "children") {
-						this.parameterData[i] = new(ParameterType.Children, null, false, null, new());
-						this.contentParamIndex = i;
-					} else
-						this.parameterData[i] = new(ParameterType.Attribute, param.Name, nullabilityInfoContext.Create(param).WriteState == NullabilityState.Nullable, null, new());
-				} else if (param.ParameterType == typeof(XmlAttributeCollection)) {
-					this.parameterData[i] = new(ParameterType.XmlAttributeCollection, null, false, null, null);
-				} else if (param.ParameterType == typeof(XmlElement)) {
-					this.parameterData[i] = new(ParameterType.XmlElement, null, false, null, null);
-				} else if (param.ParameterType.IsArray && param.ParameterType.GetArrayRank() == 1 && param.ParameterType.GetElementType() is Type elementType && typeof(TemplateNode).IsAssignableFrom(elementType)) {
-					// A special element parameter (for <li> elements).
-					this.parameterData[i] = new(ParameterType.SpecialElement, elementType.Name, false, elementType, new());
-				} else
-					throw new ArgumentException($"Invalid parameter type: {param.ParameterType}");
-			}
-		}
-
-		public object Parse(XmlElement el, AimlLoader loader) {
-			var values = new object?[this.parameterData.Length];
-
-			// Populate attribute parameters from XML attributes.
-			foreach (XmlAttribute attr in el.Attributes) {
-				var i = Array.FindIndex(this.parameterData, p => p.Type == ParameterType.Attribute && p.Name!.Equals(attr.Name, StringComparison.OrdinalIgnoreCase));
-				if (i < 0)
-					throw new AimlException($"Unknown attribute {attr.Name} in <{el.Name}> element");
-				values[i] = new TemplateElementCollection(attr.Value);
-			}
-			// Populate parameters from XML child nodes.
-			foreach (XmlNode childNode in el.ChildNodes) {
-				switch (childNode.NodeType) {
-					case XmlNodeType.Whitespace:
-						if (this.contentParamIndex is null) break;
-						this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(" "));
-						break;
-					case XmlNodeType.SignificantWhitespace:
-						if (this.contentParamIndex is null) break;
-						this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(childNode.InnerText));
-						break;
-					case XmlNodeType.Text:
-					case XmlNodeType.CDATA:
-						if (this.contentParamIndex is null) throw new AimlException($"<{el.Name}> element cannot have content.");
-						this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(childNode.InnerText));
-						break;
-					default:
-						if (childNode is XmlElement childElement) {
-							var i = Array.FindIndex(this.parameterData, p => p.Name is not null && p.Name.Equals(childElement.Name, StringComparison.OrdinalIgnoreCase));
-							if (i >= 0) {
-								if (this.parameterData[i].Type == ParameterType.SpecialElement)
-									this.parameterData[i].Children!.Add(loader.ParseElementInternal(childElement, this.parameterData[i].ChildType!));
-								else
-									values[i] = values[i] is null
-										? TemplateElementCollection.FromXml(childElement, loader)
-										: throw new AimlException($"<{el.Name}> element {this.parameterData[i].Name} attribute provided multiple times.");
-							}
-							else if (this.contentParamIndex is null)
-								throw new AimlException($"<{el.Name}> element cannot have content.");
-							else
-								this.parameterData[this.contentParamIndex.Value].Children!.Add(loader.ParseElement(childElement));
-						}
-						break;
-				}
-			}
-
-			for (var i = 0; i < values.Length; i++) {
-				var param = this.parameterData[i];
-				switch (param.Type) {
-					case ParameterType.Children:
-						values[i] = new TemplateElementCollection(param.Children!.Cast<TemplateNode>());
-						break;
-					case ParameterType.Attribute:
-						if (!param.IsOptional)
-							throw new AimlException($"Missing required attribute {param.Name} in <{el.Name}> element");
-						break;
-					case ParameterType.SpecialElement:
-						var array = Array.CreateInstance(param.ChildType!, param.Children!.Count);
-						for (var j = 0; j < array.Length; j++)
-							array.SetValue(param.Children[j], j);
-						values[i] = array;
-						break;
-					case ParameterType.XmlElement:
-						values[i] = el;
-						break;
-					case ParameterType.XmlAttributeCollection:
-						values[i] = el.Attributes;
-						break;
-				}
-			}
-			return constructor.Invoke(values);
-		}
-
-		private record struct AimlParameterData(ParameterType Type, string? Name, bool IsOptional, Type? ChildType, List<object>? Children);
-		private enum ParameterType {
-			Children,
-			Attribute,
-			SpecialElement,
-			XmlElement,
-			XmlAttributeCollection
-		}
 	}
 }

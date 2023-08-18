@@ -168,7 +168,7 @@ public sealed class Select : TemplateNode {
 						break;
 					case "q":
 					case "notq":
-						clauses.Add(loader.ParseElementInternal<Clause>(childElement));
+						clauses.Add(loader.ParseChildElementInternal<Clause>(childElement));
 						break;
 					default:
 						throw new AimlException("<select> element cannot have content.");

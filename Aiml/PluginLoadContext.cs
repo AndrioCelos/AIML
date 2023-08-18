@@ -1,7 +1,8 @@
-﻿using System.Reflection;
+﻿#if NET5_0_OR_GREATER
+using System.Reflection;
 using System.Runtime.Loader;
 
-namespace AimlVoice;
+namespace Aiml;
 internal class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
 	private readonly AssemblyDependencyResolver resolver = new(pluginPath);
 
@@ -22,19 +23,6 @@ internal class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
 		var path = Path.Combine("plugins", $"{assemblyName.Name}.dll");
 		if (File.Exists(path))
 			return this.LoadFromAssemblyPath(path);
-#if DEBUG
-		// Look for a debug build.
-		for (path = Environment.CurrentDirectory; path != null; path = Path.GetDirectoryName(path)) {
-			var path2 = Path.Combine(path, "Plugins", assemblyName.Name, "bin", "Debug");
-			if (Directory.Exists(path2)) {
-				foreach (var dir in Directory.GetDirectories(path2)) {
-					var path3 = Path.Combine(dir, $"{assemblyName.Name}.dll");
-					if (File.Exists(path3))
-						return this.LoadFromAssemblyPath(path3);
-				}
-			}
-		}
-#endif
 
 		return null;
 	}
@@ -44,3 +32,4 @@ internal class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
 		return libraryPath != null ? this.LoadUnmanagedDllFromPath(libraryPath) : IntPtr.Zero;
 	}
 }
+#endif

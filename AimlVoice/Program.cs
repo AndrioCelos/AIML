@@ -1,14 +1,11 @@
 ﻿using System.Diagnostics;
-using System.Reflection;
 using System.Speech.Recognition;
 using System.Speech.Recognition.SrgsGrammar;
 using System.Speech.Synthesis;
 using System.Text;
 using System.Xml;
-using System.Xml.Linq;
 using Aiml;
 using Aiml.Media;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace AimlVoice;
 public class Program {
@@ -41,16 +38,24 @@ public class Program {
 						break;
 					case "-h":
 					case "--help":
+					case "-?":
 					case "/?":
-						Console.WriteLine("Usage: AimlVoice [switches] <bot path>");
+						Console.WriteLine($"Usage: {nameof(AimlVoice)} [switches] <bot path>");
 						Console.WriteLine("Available switches:");
-						Console.WriteLine("  -g [name], --grammar [name]: Enable the specified grammar upon startup. Specify a file name in the `grammars` directory without the `.xml` extension.");
-						Console.WriteLine("  -e [path], --extension [path]: Load AIML extensions from the specified library.");
-						Console.WriteLine("  -V [name], --voice [name]: Use the specified voice. If invalid, a list of available voices will be shown.");
+						Console.WriteLine("  -g [name], --grammar [name]: Enable the specified grammar upon startup. Specify a file name in the `grammars` directory without the `.xml` extension. May be used multiple times.");
+						Console.WriteLine("  -e [path], --extension [path]: Load AIML extensions from the specified assembly.");
+						Console.WriteLine("  -V [name], --voice [name]: Use the specified voice.");
+						Console.WriteLine("  --voices: Show a list of available voices and exit.");
 						Console.WriteLine("  -r [number], --rate [number]: Modify the speech rate. -10 ~ +10; default is 0.");
 						Console.WriteLine("  -v [number], --volume [number]: Modify the speech volume. -10 ~ +10; default is 0.");
 						Console.WriteLine("  -n, --no-sr: Do not load the speech recogniser. Input will by typing only.");
 						Console.WriteLine("  --: Stop processing switches.");
+						return 0;
+					case "--voices":
+					case "--listvoices":
+						Console.WriteLine("Available voices:");
+						foreach (var voice2 in new SpeechSynthesizer().GetInstalledVoices().Where(v => v.Enabled))
+							Console.WriteLine(voice2.VoiceInfo.Name);
 						return 0;
 					case "-g":
 					case "--grammar":
@@ -81,8 +86,8 @@ public class Program {
 						sr = false;
 						break;
 					default:
-						Console.Error.WriteLine("Unknown switch " + s);
-						Console.Error.WriteLine("Use `AimlVoice --help` for more information.");
+						Console.Error.WriteLine($"Unknown switch {s}");
+						Console.Error.WriteLine($"Use `{nameof(AimlVoice)} --help` for more information.");
 						return 1;
 				}
 			} else {
@@ -91,8 +96,8 @@ public class Program {
 			}
 		}
 		if (botPath == null) {
-			Console.Error.WriteLine("Usage: AimlVoice [switches] <bot path>");
-			Console.Error.WriteLine("Use `AimlVoice --help` for more information.");
+			Console.Error.WriteLine($"Usage: {nameof(AimlVoice)} [switches] <bot path>");
+			Console.Error.WriteLine($"Use `{nameof(AimlVoice)} --help` for more information.");
 			return 1;
 		}
 
@@ -105,44 +110,14 @@ public class Program {
 			Console.WriteLine($"Grammars directory {Path.Combine(botPath, "grammars")} does not exist. Skipping loading grammars.");
 		}
 
-		bot = new Bot(botPath);
-		bot.LogMessage += Bot_LogMessage;
-
-		bot.OobHandlers.Add("SetGrammar", OobSetGrammar);
-		bot.OobHandlers.Add("EnableGrammar", OobEnableGrammar);
-		bot.OobHandlers.Add("DisableGrammar", OobDisableGrammar);
-		bot.OobHandlers.Add("SetPartialInput", OobPartialInput);
-
-		bot.MediaElements.Add("speak", (MediaElementType.Inline, SpeakElement.FromXml));
-		bot.MediaElements.Add("priority", (MediaElementType.Block, (b, e) => new PriorityElement()));
-		bot.MediaElements.Add("queue", (MediaElementType.Block, (b, e) => new PriorityElement()));
-
+		AimlLoader.AddExtension(new AimlVoiceExtension());
 		foreach (var path in extensionPaths) {
 			Console.WriteLine($"Loading extensions from {path}...");
-			var loadContext = new PluginLoadContext(Path.GetFullPath(path));
-			var assemblyName = AssemblyName.GetAssemblyName(path);
-			var assembly = loadContext.LoadFromAssemblyName(assemblyName);
-			var found = false;
-			foreach (var type in assembly.GetExportedTypes()) {
-				if (!type.IsAbstract && typeof(ISraixService).IsAssignableFrom(type)) {
-					Console.WriteLine($"Initialising type {type.FullName}...");
-					found = true;
-					var service = (ISraixService) Activator.CreateInstance(type)!;
-					bot.SraixServices.Add(type.Name, service);
-					bot.SraixServices.Add(type.FullName!, service);
-				} else if (!type.IsAbstract && typeof(IAimlExtension).IsAssignableFrom(type)) {
-					Console.WriteLine($"Initialising type {type.FullName}...");
-					found = true;
-					var extension = (IAimlExtension) Activator.CreateInstance(type)!;
-					extension.Initialise();
-				}
-			}
-			if (!found) {
-				Console.Error.WriteLine($"No extensions found in {path}.");
-				return 1;
-			}
+			AimlLoader.AddExtensions(path);
 		}
 
+		bot = new Bot(botPath);
+		bot.LogMessage += Bot_LogMessage;
 		bot.LoadConfig();
 		bot.LoadAIML();
 
@@ -164,70 +139,95 @@ public class Program {
 		synthesizer.Volume = volume;
 		synthesizer.SpeakCompleted += Synthesizer_SpeakCompleted;
 
-		if (!sr) {
-			if (bot.Graphmaster.Children.ContainsKey("OOB") && bot.Graphmaster.Children["OOB"].Children.ContainsKey("START")) {
-				Console.ForegroundColor = ConsoleColor.DarkGreen;
-				Console.WriteLine("* OOB START");
-				Console.ResetColor();
-				SendInput("OOB START");
+		using var recognizer = sr ? new SpeechRecognitionEngine(new System.Globalization.CultureInfo("en")) {
+			BabbleTimeout = TimeSpan.FromSeconds(1),
+			EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(0.75)
+		} : null;
+
+		if (recognizer is not null) {
+			foreach (var entry in grammars) {
+				Console.WriteLine($"Loading grammar '{entry.Key}'...");
+				entry.Value.Enabled = false;
+				recognizer.LoadGrammar(entry.Value);
 			}
 
-			Console.Write("> ");
-			while (true) {
-				var message = Console.ReadLine();
-				if (message == null) return 0;
-				SendInput(message);
-				Console.Write("> ");
-			}
-		} else {
-			using (recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("en")) {
-				BabbleTimeout = TimeSpan.FromSeconds(1),
-				EndSilenceTimeoutAmbiguous = TimeSpan.FromSeconds(0.75)
-			}) {
-
-				foreach (var entry in grammars) {
-					Console.WriteLine($"Loading grammar '{entry.Key}'...");
-					entry.Value.Enabled = false;
-					recognizer.LoadGrammar(entry.Value);
-				}
-
-				if (defaultGrammarPath.Count == 0) {
-					Console.WriteLine($"Loading dictation grammar...");
-					enabledGrammarPaths.Add("");
-					grammars[""] = new DictationGrammar();
-					recognizer.LoadGrammar(grammars[""]);
-				} else {
-					foreach (var name in defaultGrammarPath) {
-						enabledGrammarPaths.Add(name);
-						grammars[name].Enabled = true;
-					}
-				}
-
-				recognizer.SpeechRecognized += new EventHandler<SpeechRecognizedEventArgs>(Recognizer_SpeechRecognized);
-				recognizer.SpeechRecognitionRejected += Recognizer_SpeechRecognitionRejected;
-				recognizer.SpeechHypothesized += Recognizer_SpeechHypothesized;
-				recognizer.RecognizerUpdateReached += Recognizer_RecognizerUpdateReached;
-
-				recognizer.SetInputToDefaultAudioDevice();
-
-				recognizer.RecognizeAsync(RecognizeMode.Multiple);
-
-				if (bot.Graphmaster.Children.ContainsKey("OOB") && bot.Graphmaster.Children["OOB"].Children.ContainsKey("START")) {
-					Console.ForegroundColor = ConsoleColor.DarkGreen;
-					Console.WriteLine("* OOB START");
-					Console.ResetColor();
-					SendInput("OOB START");
-				}
-
-				Console.Write("> ");
-				while (true) {
-					var message = Console.ReadLine();
-					if (message == null) return 0;
-					SendInput(message);
-					Console.Write("> ");
+			if (defaultGrammarPath.Count == 0) {
+				Console.WriteLine($"Loading dictation grammar...");
+				enabledGrammarPaths.Add("");
+				grammars[""] = new DictationGrammar();
+				recognizer.LoadGrammar(grammars[""]);
+			} else {
+				foreach (var name in defaultGrammarPath) {
+					enabledGrammarPaths.Add(name);
+					grammars[name].Enabled = true;
 				}
 			}
+
+			recognizer.SpeechRecognized += new EventHandler<SpeechRecognizedEventArgs>(Recognizer_SpeechRecognized);
+			recognizer.SpeechRecognitionRejected += Recognizer_SpeechRecognitionRejected;
+			recognizer.SpeechHypothesized += Recognizer_SpeechHypothesized;
+			recognizer.RecognizerUpdateReached += Recognizer_RecognizerUpdateReached;
+
+			recognizer.SetInputToDefaultAudioDevice();
+
+			recognizer.RecognizeAsync(RecognizeMode.Multiple);
 		}
+
+		if (bot.Graphmaster.Children.TryGetValue("OOB", out var node) && node.Children.ContainsKey("START"))
+			SendInput("OOB START");
+
+		Console.Write("> ");
+		while (true) {
+			var message = Console.ReadLine();
+			if (message == null) return 0;
+			SendInput(message);
+			Console.Write("> ");
+		}
+	}
+
+	public static void SetPartialInput(PartialInputMode partialInputMode) {
+		partialInput = partialInputMode;
+		Console.WriteLine($"Partial input is {partialInput}.");
+	}
+
+	public static void TrySwitchGrammar(string name) {
+		if (enabledGrammarPaths.Contains(name)) return;
+		if (!grammars.TryGetValue(name, out var grammar)) {
+			Console.WriteLine($"Could not find requested grammar '{name}'.");
+			return;
+		}
+		Console.WriteLine($"Switching to grammar '{name}'");
+		foreach (var path in enabledGrammarPaths)
+			grammars[path].Enabled = false;
+		enabledGrammarPaths.Clear();
+		grammar.Enabled = true;
+		enabledGrammarPaths.Add(name);
+	}
+
+	public static void TryDisableGrammar(string name) {
+		if (!enabledGrammarPaths.Contains(name)) return;
+		if (!grammars.TryGetValue(name, out var grammar)) {
+			Console.WriteLine($"Could not find requested grammar '{name}'.");
+			return;
+		}
+		if (enabledGrammarPaths.Count == 1) {
+			Console.WriteLine($"Refusing to disable the last enabled grammar '{name}'");
+			return;
+		}
+		Console.WriteLine($"Disabling grammar '{name}'");
+		grammar.Enabled = false;
+		enabledGrammarPaths.Remove(name);
+	}
+
+	public static void TryEnableGrammar(string name) {
+		if (!enabledGrammarPaths.Contains(name)) return;
+		if (!grammars.TryGetValue(name, out var grammar)) {
+			Console.WriteLine($"Could not find requested grammar '{name}'.");
+			return;
+		}
+		Console.WriteLine($"Enabling grammar '{name}'");
+		grammar.Enabled = true;
+		enabledGrammarPaths.Add(name);
 	}
 
 	private static void Synthesizer_SpeakCompleted(object? sender, SpeakCompletedEventArgs e) {
@@ -371,65 +371,6 @@ public class Program {
 		}
 	}
 
-	private static string? OobPartialInput(XmlElement element)
-		=> OobPartialInput(element.InnerText);
-	private static string? OobPartialInput(string text) {
-		switch (text.Trim().ToLowerInvariant()) {
-			case "off": case "false": case "0": partialInput = PartialInputMode.Off; break;
-			case "on": case "true": case "1": partialInput = PartialInputMode.On; break;
-			case "continuous": case "2": partialInput = PartialInputMode.Continuous; break;
-			default: Console.WriteLine($"Invalid partial input setting '{text}'."); return null;
-		}
-		Console.WriteLine($"Partial input is {partialInput}.");
-		return null;
-	}
-
-	private static string? OobSetGrammar(XmlElement element)
-		=> OobSetGrammar(element.InnerText);
-	private static string? OobSetGrammar(string text) {
-		if (!enabledGrammarPaths.Contains(text)) {
-			if (grammars.TryGetValue(text, out var grammar)) {
-				Console.WriteLine($"Switching to grammar '{text}'");
-				foreach (var path in enabledGrammarPaths)
-					grammars[path].Enabled = false;
-				enabledGrammarPaths.Clear();
-				grammar.Enabled = true;
-				enabledGrammarPaths.Add(text);
-			} else
-				Console.WriteLine($"Could not find requested grammar '{text}'.");
-		}
-		return null;
-	}
-
-	private static string? OobDisableGrammar(XmlElement element)
-		=> OobDisableGrammar(element.InnerText);
-	private static string? OobDisableGrammar(string text) {
-		if (enabledGrammarPaths.Contains(text)) {
-			if (enabledGrammarPaths.Count == 1) {
-				Console.WriteLine($"Refusing to disable the last enabled grammar '{text}'");
-			} else if (grammars.TryGetValue(text, out var grammar)) {
-				Console.WriteLine($"Disabling grammar '{text}'");
-				grammar.Enabled = false;
-				enabledGrammarPaths.Remove(text);
-			} else
-				Console.WriteLine($"Could not find requested grammar '{text}'.");
-		}
-		return null;
-	}
-	private static string? OobEnableGrammar(XmlElement element)
-		=> OobEnableGrammar(element.InnerText);
-	private static string? OobEnableGrammar(string text) {
-		if (!enabledGrammarPaths.Contains(text)) {
-			if (grammars.TryGetValue(text, out var grammar)) {
-				Console.WriteLine($"Enabling grammar '{text}'");
-				grammar.Enabled = true;
-				enabledGrammarPaths.Add(text);
-			} else
-				Console.WriteLine($"Could not find requested grammar '{text}'.");
-		}
-		return null;
-	}
-
 	private static void Bot_LogMessage(object? sender, LogMessageEventArgs e) {
 		switch (e.Level) {
 			case LogLevel.Warning: Console.ForegroundColor = ConsoleColor.Yellow; break;
@@ -445,7 +386,7 @@ public class Program {
 		Console.ForegroundColor = ConsoleColor.Magenta;
 		Console.WriteLine(e.Result.Text + "     ");
 		Console.ResetColor();
-		if (partialInput == PartialInputMode.Continuous || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(3))
+		if (partialInput == PartialInputMode.Continuous || partialInputTimeout.Elapsed >= TimeSpan.FromSeconds(5))
 			SendInput(e.Result.Text);
 		Console.Write("> ");
 	}
@@ -459,7 +400,7 @@ public class SpeechQueueItem(Prompt prompt, bool important) {
 public enum PartialInputMode {
 	/// <summary>Partial input will not be processed.</summary>
 	Off = 0,
-	/// <summary>Partial input will be processed, but if there is a response to partial input, further input will be ignored for 3 seconds.</summary>
+	/// <summary>Partial input will be processed, but if there is a response to partial input, further input will be ignored for 5 seconds.</summary>
 	On = 1,
 	/// <summary>Partial input will be processed with no cooldown.</summary>
 	Continuous = 2
