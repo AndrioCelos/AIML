@@ -18,7 +18,7 @@ public class Bot {
 	public Dictionary<string, string> Properties => this.Config.BotProperties;
 	public Dictionary<string, Set> Sets { get; } = new(StringComparer.CurrentCultureIgnoreCase);
 	public Dictionary<string, Map> Maps { get; } = new(StringComparer.CurrentCultureIgnoreCase);
-	public TripleCollection Triples { get; } = new();
+	public TripleCollection Triples { get; } = new(StringComparer.CurrentCultureIgnoreCase);
 
 	public AimlLoader AimlLoader { get; }
 
@@ -216,7 +216,7 @@ public class Bot {
 				if (fields.Length != 3)
 					this.Log(LogLevel.Warning, "triples.txt contains a badly formatted line: " + line);
 				else
-					this.Triples.Add(fields[0], fields[1], fields[2], out _);
+					this.Triples.Add(fields[0], fields[1], fields[2]);
 			}
 		}
 

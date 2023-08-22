@@ -1,77 +1,62 @@
 ﻿using System.Collections;
-using System.Collections.ObjectModel;
 
 namespace Aiml;
-/// <summary>
-/// Represents a set of variables and values that can be returned by a select tag.
-/// </summary>
-public class Tuple : Dictionary<string, string>, IEquatable<Tuple> {
-	public int Index { get; } = tuples.Count;
+/// <summary>Represents a set of variable bindings in the process of resolving a <see cref="Tags.Select"/> query.</summary>
+/// <remarks>This class is represented as a singly-linked list.</remarks>
+public class Tuple : IEnumerable<KeyValuePair<string, string>> {
+	public string Key { get; }
+	public string Value { get; }
+	public Tuple? Next { get; }
 
-	private readonly HashSet<string> visibleVars;
-	/// <summary>
-	///     The set of variables that participate in comparison and hash functions for this tuple.
-	/// </summary>
-	public ReadOnlySet<string> VisibleVars;
-
-	private static readonly List<Tuple> tuples = new();
-	public static ReadOnlyCollection<Tuple> Tuples { get; } = tuples.AsReadOnly();
-
-	public Tuple(HashSet<string> visibleVars) : base(visibleVars.Comparer) {
-		this.visibleVars = visibleVars;
-		this.VisibleVars = new ReadOnlySet<string>(this.visibleVars);
-		tuples.Add(this);
+	public Tuple(string key, string value, Tuple? next) {
+		this.Key = key;
+		this.Value = value;
+		this.Next = next;
 	}
-	public Tuple(Tuple source) : base(source, source.Comparer) {
-		this.visibleVars = source.visibleVars;
-		this.VisibleVars = new ReadOnlySet<string>(this.visibleVars);
-		tuples.Add(this);
-	}
+	public Tuple(string key, string value) : this(key, value, null) { }
 
-	public bool Equals(Tuple? other) => other is not null && this.visibleVars.SetEquals(other.visibleVars) && this.visibleVars.All(s => this.Comparer.Equals(this[s], other[s]));
-	public override bool Equals(object? other) => other is Tuple tuple && this.Equals(tuple);
-
-	public override int GetHashCode() {
-		var hashCode = new HashCode();
-		foreach (var name in this.visibleVars) {
-			hashCode.Add(name, null);
-			if (this.TryGetValue(name, out var value))
-				hashCode.Add(value, null);
+	public string? this[string key] {
+		get {
+			var tuple = this;
+			do {
+				if (key.Equals(tuple.Key, StringComparison.OrdinalIgnoreCase)) return tuple.Value;
+				tuple = tuple.Next;
+			} while (tuple is not null);
+			return null;
 		}
-		return hashCode.ToHashCode();
 	}
-}
 
-public class ReadOnlySet<T>(ISet<T> set) : ISet<T>, IEnumerable<T>
-#if NET5_0_OR_GREATER
-	, IReadOnlySet<T>
-#endif
-{
-	protected ISet<T> Set { get; } = set;
+	/// <summary>Returns an encoded string containing the contents of the specified variables. The encoded string shall not contain spaces.</summary>
+	public string Encode(IReadOnlyCollection<string>? visibleVars) {
+		using var ms = new MemoryStream();
+		using var writer = new BinaryWriter(ms);
+		foreach (var e in this) {
+			if (visibleVars is not null && !visibleVars.Contains(e.Key)) continue;
+			writer.Write(e.Key);
+			writer.Write(e.Value);
+		}
+		return Convert.ToBase64String(ms.GetBuffer(), 0, (int) ms.Position);
+	}
 
-	public int Count => this.Set.Count;
-	public bool IsReadOnly => true;
+	/// <summary>Returns the value of the specified variable from an encoded string, or <see langword="null"/> if the variable is not bound in the encoded string.</summary>
+	public static string? GetFromEncoded(string encoded, string key) {
+		var array = Convert.FromBase64String(encoded);
+		using var ms = new MemoryStream(array);
+		using var reader = new BinaryReader(ms);
+		while (ms.Position < ms.Length) {
+			var key2 = reader.ReadString();
+			var value = reader.ReadString();
+			if (key.Equals(key2, StringComparison.OrdinalIgnoreCase)) return value;
+		}
+		return null;
+	}
 
-	public IEnumerator<T> GetEnumerator() => this.Set.GetEnumerator();
-	IEnumerator IEnumerable.GetEnumerator() => this.Set.GetEnumerator();
-
-	public bool Add(T item) => throw new NotSupportedException();
-	void ICollection<T>.Add(T item) => throw new NotSupportedException();
-	public bool Remove(T item) => throw new NotSupportedException();
-	public void Clear() => throw new NotSupportedException();
-
-	public bool Contains(T item) => this.Set.Contains(item);
-	public void CopyTo(T[] array, int arrayIndex) => this.Set.CopyTo(array, arrayIndex);
-
-	public void UnionWith(IEnumerable<T> other) => throw new NotSupportedException();
-	public void IntersectWith(IEnumerable<T> other) => throw new NotSupportedException();
-	public void ExceptWith(IEnumerable<T> other) => throw new NotSupportedException();
-	public void SymmetricExceptWith(IEnumerable<T> other) => throw new NotSupportedException();
-
-	public bool IsSubsetOf(IEnumerable<T> other) => this.Set.IsSubsetOf(other);
-	public bool IsSupersetOf(IEnumerable<T> other) => this.Set.IsSupersetOf(other);
-	public bool IsProperSupersetOf(IEnumerable<T> other) => this.Set.IsProperSupersetOf(other);
-	public bool IsProperSubsetOf(IEnumerable<T> other) => this.Set.IsProperSubsetOf(other);
-	public bool Overlaps(IEnumerable<T> other) => this.Set.Overlaps(other);
-	public bool SetEquals(IEnumerable<T> other) => this.Set.SetEquals(other);
+	public IEnumerator<KeyValuePair<string, string>> GetEnumerator() {
+		var tuple = this;
+		do {
+			yield return new(tuple.Key, tuple.Value);
+			tuple = tuple.Next;
+		} while (tuple != null);
+	}
+	IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
 }

@@ -34,7 +34,7 @@ namespace Aiml.Tags;
 ///			</item>
 ///		</list>
 ///		<para>This element has no other content.</para>
-///		<para>This element is part of an extension to AIML derived from Program AB.</para>
+///		<para>This element is part of an extension to AIML derived from Program AB and Program Y.</para>
 /// </remarks>
 /// <example>
 ///		<para>Example:</para>
@@ -85,7 +85,7 @@ public sealed class Select : TemplateNode {
 	public Clause[] Clauses { get; }
 
 	public Select(TemplateElementCollection variables, Clause[] clauses) {
-		if (clauses.Length == 0) throw new ArgumentException("A select tag must contain at least one clause.", nameof(clauses));
+		if (clauses.Length == 0) throw new ArgumentException("A <select> element must contain at least one clause.", nameof(clauses));
 		this.Variables = variables;
 		this.Clauses = clauses;
 	}
@@ -96,62 +96,52 @@ public sealed class Select : TemplateNode {
 			? this.Variables.Evaluate(process).Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries)
 			: Array.Empty<string>();
 
-		// Start with an empty tuple.
-		var tuple = new Tuple(new HashSet<string>(visibleVars, process.Bot.Config.StringComparer));
-		var tuples = this.SelectFromRemainingClauses(process, tuple, resolvedClauses, 0);
-		process.Log(LogLevel.Diagnostic, $"In element <select>: Found {tuples.Count} matching {(tuples.Count == 1 ? "tuple" : "tuples")}.");
-		return tuples.Count > 0
-#if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-			? string.Join(' ', tuples.Select(t => t.Index))
+		// Begin a depth-first search for matching tuples.
+		var tuples = SelectFromRemainingClauses(process, null, resolvedClauses, 0);
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+		return string.Join(' ', (from t in tuples select t.Encode(visibleVars)).Distinct());
 #else
-			? string.Join(" ", tuples.Select(t => t.Index))
+		return string.Join(" ", (from t in tuples select t.Encode(visibleVars)).Distinct());
 #endif
-			: process.Bot.Config.DefaultTriple;
 	}
 
-	private HashSet<Tuple> SelectFromRemainingClauses(RequestProcess process, Tuple partial, IReadOnlyList<(string subj, string pred, string obj, bool affirm)> resolvedClauses, int startIndex) {
-		HashSet<Tuple> tuples;
+	private static IEnumerable<Tuple?> SelectFromRemainingClauses(RequestProcess process, Tuple? partial, IReadOnlyList<(string subj, string pred, string obj, bool affirm)> resolvedClauses, int startIndex) {
+		if (startIndex >= resolvedClauses.Count) {
+			yield return partial;
+			yield break;
+		}
+		foreach (var tuple in SelectFromClause(process, partial, resolvedClauses, startIndex)) {
+			foreach (var tuple2 in SelectFromRemainingClauses(process, tuple, resolvedClauses, startIndex + 1))
+				yield return tuple2;
+		}
+	}
 
+	private static IEnumerable<Tuple?> SelectFromClause(RequestProcess process, Tuple? partial, IReadOnlyList<(string subj, string pred, string obj, bool affirm)> resolvedClauses, int startIndex) {
 		var (subj, pred, obj, affirm) = resolvedClauses[startIndex];
 
-		// Fill in the clause with values from the tuple under consideration.
-		if (subj.StartsWith("?") && partial.TryGetValue(subj, out var value)) subj = value;
-		if (pred.StartsWith("?") && partial.TryGetValue(pred, out value)) pred = value;
-		if (obj.StartsWith("?") && partial.TryGetValue(obj, out value)) obj = value;
+		// Fill in the clause from existing bindings from the tuple under consideration.
+		if (partial is not null) {
+			if (subj.IsClauseVariable() && partial[subj] is string s1) subj = s1;
+			if (pred.IsClauseVariable() && partial[pred] is string s2) pred = s2;
+			if (obj.IsClauseVariable() && partial[obj] is string s3) obj = s3;
+		}
 
 		// Find triples that match.
-		var triples = process.Bot.Triples.Match(subj, pred, obj);
+		var triples = process.Bot.Triples.Match(subj.IsClauseVariable() ? null : subj, pred.IsClauseVariable() ? null : pred, obj.IsClauseVariable() ? null : obj);
 		if (!affirm) {
-			// If the notq assertion succeeds, we just add the tuple under consideration without filling in any variables.
-			if (triples.Count != 0) return new HashSet<Tuple>();
-			tuples = new() { partial };
+			// If the <notq> assertion succeeds, there are no variable bindings to add, so just keep the tuple under consideration.
+			if (!triples.Any()) yield return partial;
 		} else {
-			// Add possible tuples from each matching triple.
-			tuples = new HashSet<Tuple>();
-			foreach (var tripleIndex in triples) {
-				var tuple = new Tuple(partial);
+			// Add possible variable bindings from each matching triple.
+			foreach (var triple in triples) {
+				var tuple = partial;
 
-				if (subj.StartsWith("?")) tuple.Add(subj, process.Bot.Triples[tripleIndex].Subject);
-				if (pred.StartsWith("?")) tuple.Add(pred, process.Bot.Triples[tripleIndex].Predicate);
-				if (obj.StartsWith("?")) tuple.Add(obj, process.Bot.Triples[tripleIndex].Object);
-
-				tuples.Add(tuple);
+				if (subj.IsClauseVariable()) tuple = new(subj, triple.Subject, tuple);
+				if (pred.IsClauseVariable()) tuple = new(pred, triple.Predicate, tuple);
+				if (obj.IsClauseVariable()) tuple = new(obj, triple.Object, tuple);
+				yield return tuple;
 			}
 		}
-
-		var nextClause = startIndex + 1;
-		if (nextClause == this.Clauses.Length) return tuples;
-
-		// Recurse into the remaining clauses for each possible tuple.
-		var result = new HashSet<Tuple>();
-
-		// TODO: This recursive strategy involving sets has a minor quirk.
-		// For a query (q: a isA b, notq: b isA x), for subjects a that have more than one predicate isA,
-		// the results depend on the order in which the triples are defined.
-		foreach (var tuple in tuples) {
-			result.UnionWith(this.SelectFromRemainingClauses(process, tuple, resolvedClauses, nextClause));
-		}
-		return result;
 	}
 
 	public static Select FromXml(XmlElement element, AimlLoader loader) {

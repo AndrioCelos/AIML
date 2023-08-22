@@ -6,15 +6,15 @@
 ///			<item>
 ///				<term><c>subj</c>, <c>pred</c>, <c>obj</c></term>
 ///				<description>
-///					<para>May contain a variable starting with <c>?</c> or text.</para>
+///					<para>May contain a variable <c>?</c> or text.</para>
 ///					<para>Text asserts that a triple element matches the text.</para>
-///					<para>Exactly one attribute should be a variable; the variable name is ignored and may be simply <c>?</c>. It indicates the element of the triple that is returned.</para>
+///					<para>Exactly one attribute should be <c>?</c>; the variable name is ignored. It indicates the element of the triple that is returned.</para>
 ///				</description>
 ///			</item>
 ///		</list>
 ///		<para>If no triple matches, <c>DefaultTriple</c> is returned. If more than one triple matches, a single arbitrarily-chosen match is used.</para>
-///     <para>This element has no content.</para>
-///     <para>This element is not part of the AIML specification, and was derived from Program AB.</para>
+///     <para>This element has no other content.</para>
+///		<para>This element is part of an extension to AIML derived from Program AB and Program Y.</para>
 /// </remarks>
 /// <example>
 ///		<para>Examples:</para>
@@ -38,24 +38,23 @@ public sealed class Uniq(TemplateElementCollection subj, TemplateElementCollecti
 		var pred = this.Predicate.Evaluate(process);
 		var obj = this.Object.Evaluate(process);
 
+		if (subj.IsClauseVariable()) subj = null;
+		if (pred.IsClauseVariable()) pred = null;
+		if (obj.IsClauseVariable()) obj = null;
+
+		var variables = (subj is null ? 1 : 0) + (pred is null ? 1 : 0) + (obj is null ? 1 : 0);
+		if (variables != 1) {
+			process.Log(LogLevel.Warning, $"In element <uniq>: The clause contains {variables} variables; it should contain exactly one. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
+			if (variables == 0) return process.Bot.Config.DefaultTriple;
+		}
+
 		// Find triples that match.
-		var triples = process.Bot.Triples.Match(subj, pred, obj);
-		if (triples.Count == 0) {
-			process.Log(LogLevel.Diagnostic, $"In element <uniq>: No matching triple exists.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
+		var triple = process.Bot.Triples.Match(subj, pred, obj).FirstOrDefault();
+		if (triple is null) {
+			process.Log(LogLevel.Diagnostic, $"In element <uniq>: No matching triple was found. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
 			return process.Bot.Config.DefaultTriple;
-		} else if (triples.Count > 1)
-			process.Log(LogLevel.Diagnostic, $"In element <uniq>: Found {triples.Count} matching triples.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
+		}
 
-		var tripleIndex = triples.First();
-		var triple = process.Bot.Triples[tripleIndex];
-
-		process.Log(LogLevel.Diagnostic, $"In element <uniq>: Found triple {tripleIndex}.  Subject: {triple.Subject}  Predicate: {triple.Predicate}  Object: {triple.Object}");
-
-		// Get the result.
-		if (obj.StartsWith("?")) return triple.Object;
-		if (pred.StartsWith("?")) return triple.Predicate;
-		if (subj.StartsWith("?")) return triple.Subject;
-		process.Log(LogLevel.Warning, $"In element <uniq>: The clause contains no variables.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
-		return process.Bot.Config.DefaultTriple;
+		return subj is null ? triple.Subject : pred is null ? triple.Predicate : triple.Object;
 	}
 }

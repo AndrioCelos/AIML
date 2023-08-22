@@ -3,9 +3,8 @@
 namespace Aiml;
 /// <summary>Transforms English words to singular or plural forms based on regular expression substitutions.</summary>
 /// <remarks>
-///     This class is based on the class with the same name in JBoss DNA,
-///     which in turn was inspired by its namesake in Ruby on Rails.
-///     JBoss DNA is available under the GNU General Public License, version 2.1.
+///		<para>This class is based on the class with the same name in JBoss DNA, which in turn was inspired by its namesake in Ruby on Rails.</para>
+///		<para>JBoss DNA is available under the GNU General Public License, version 2.1.</para>
 /// </remarks>
 public class Inflector {
 	public List<Rule> Plurals { get; } = new List<Rule>();

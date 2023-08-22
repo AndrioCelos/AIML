@@ -13,16 +13,16 @@ namespace Aiml.Tags;
 ///			</item>
 ///			<item>
 ///				<term><c><![CDATA[<get var='?variable'><tuple>tuple</tuple></get>]]></c></term>
-///				<description>Returns the value of a tuple variable set by a <see cref="Select"/> element.</description>
+///				<description>Returns the value of a tuple variable binding set by a <see cref="Select"/> element.</description>
 ///			</item>
 ///		</list>
-///		<para>This element has no content.</para>
-///		<para>This element is defined by the AIML 1.1 specification. Local variables are defined by the AIML 2.0 specification. Tuples are part of an extension to AIML derived from Program AB.</para>
+///		<para>This element has no other content.</para>
+///		<para>This element is defined by the AIML 1.1 specification. Local variables are defined by the AIML 2.0 specification. Tuples are part of an extension to AIML derived from Program AB and Program Y.</para>
 /// </remarks>
 /// <seealso cref="Select"/><seealso cref="Set"/>
 public sealed class Get(TemplateElementCollection key, TemplateElementCollection? tuple, bool local) : TemplateNode {
 	public TemplateElementCollection Key { get; } = key;
-	public TemplateElementCollection? TupleKey { get; } = tuple;
+	public TemplateElementCollection? TupleString { get; } = tuple;
 	public bool LocalVar { get; } = local;
 
 	[AimlLoaderContructor]
@@ -31,20 +31,19 @@ public sealed class Get(TemplateElementCollection key, TemplateElementCollection
 		if (name is not null && var is not null)
 			throw new ArgumentException("<get> element cannot have both name and var attributes.", nameof(var));
 		if (name is not null && tuple is not null)
-			throw new ArgumentException("<get> element cannot have both name and tuple attributes.", nameof(var));
+			throw new ArgumentException("<get> element with tuple attribute must have a var attribute instead of name.", nameof(var));
 	}
 
 	public override string Evaluate(RequestProcess process) {
-		if (this.TupleKey is not null) {
+		if (this.TupleString is not null) {
 			// Get a value from a tuple.
-			var value = this.TupleKey.Evaluate(process);
-			if (!string.IsNullOrWhiteSpace(value)) {
-				if (int.TryParse(value, out var index) && index >= 0 && index < Tuple.Tuples.Count) {
-					var tuple = Tuple.Tuples[index];
-					if (tuple.TryGetValue(this.Key.Evaluate(process), out value)) return value;
-				}
+			var variable = this.Key.Evaluate(process);
+			if (!variable.IsClauseVariable()) {
+				process.Log(LogLevel.Warning, $"In element <get>: var was not a valid tuple query variable: {variable}");
+				return process.Bot.Config.DefaultPredicate;
 			}
-			return process.Bot.Config.DefaultPredicate;
+			var tupleString = this.TupleString.Evaluate(process);
+			return Tuple.GetFromEncoded(tupleString, variable) ?? process.Bot.Config.DefaultPredicate;
 		}
 
 		// Get a user predicate or local variable.

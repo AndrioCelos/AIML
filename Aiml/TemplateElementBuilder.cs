@@ -96,7 +96,7 @@ internal class TemplateElementBuilder {
 					values[i] = new TemplateElementCollection(param.Children!.Cast<TemplateNode>());
 					break;
 				case ParameterType.Attribute:
-					if (!param.IsOptional)
+					if (values[i] is null && !param.IsOptional)
 						throw new AimlException($"Missing required attribute {param.Name} in <{el.Name}> element");
 					break;
 				case ParameterType.SpecialElement:

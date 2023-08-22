@@ -1,16 +1,18 @@
 ﻿namespace Aiml.Tags;
-/// <summary>Deletes a triple from the bot's triple database and returns an opaque identifier for the deleted triple.</summary>
+/// <summary>Deletes triples from the bot's triple database.</summary>
 /// <remarks>
 ///		<para>This element has the following attributes:</para>
 ///		<list type="table">
 ///			<item>
 ///				<term><c>subj</c>, <c>pred</c>, <c>obj</c></term>
-///				<description>specify the triple to be deleted.</description>
+///				<description>specify the triples to be deleted.</description>
 ///			</item>
 ///		</list>
-///		<para>If the triple does not exist, the triple database is unchanged and <c>DefaultTriple</c> is returned.</para>
-///		<para>This element has no content.</para>
-///		<para>This element is part of an extension to AIML derived from Program AB.</para>
+///		<para>If only <c>subj</c> and <c>pred</c> is specified, it deletes all relations with the specified subject and predicate.
+///			If only <c>subj</c> is specified, it deletes all relations with the specified subject.</para>
+///		<para>If the triple does not exist, the triple database is unchanged.</para>
+///		<para>This element has no other content.</para>
+///		<para>This element is part of an extension to AIML derived from Program AB and Program Y.</para>
 /// </remarks>
 /// <seealso cref="AddTriple"/><seealso cref="Select"/><seealso cref="Uniq"/>
 public sealed class DeleteTriple(TemplateElementCollection subj, TemplateElementCollection pred, TemplateElementCollection obj) : TemplateNode {
@@ -19,24 +21,23 @@ public sealed class DeleteTriple(TemplateElementCollection subj, TemplateElement
 	public TemplateElementCollection Object { get; } = obj;
 
 	public override string Evaluate(RequestProcess process) {
-		var subj = this.Subject.Evaluate(process);
-		var pred = this.Predicate.Evaluate(process);
-		var obj = this.Object.Evaluate(process);
+		var subj = this.Subject.Evaluate(process).Trim();
+		var pred = this.Predicate.Evaluate(process).Trim();
+		var obj = this.Object.Evaluate(process).Trim();
 
-		if (string.IsNullOrWhiteSpace(subj) || string.IsNullOrWhiteSpace(pred) || string.IsNullOrWhiteSpace(obj)) {
-			process.Log(LogLevel.Warning, $"In element <deletetriple>: Could not delete triple with missing elements.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
-			return process.Bot.Config.DefaultTriple;
+		if (string.IsNullOrEmpty(subj)) {
+			process.Log(LogLevel.Warning, "In element <deletetriple>: Subject was empty.");
+			return "";
 		}
 
-		var triples = process.Bot.Triples.Match(subj, pred, obj);
-		if (triples.Count == 0) {
-			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
-			return process.Bot.Config.DefaultTriple;
-		}
-
-		var index = triples.First();
-		process.Bot.Triples.Remove(index);
-		process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted the triple with key {index}.  Subject: {subj}  Predicate: {pred}  Object: {obj}");
-		return index.ToString();
+		if (string.IsNullOrEmpty(obj)) {
+			var count = string.IsNullOrEmpty(pred) ? process.Bot.Triples.RemoveAll(subj) : process.Bot.Triples.RemoveAll(subj, pred);
+			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted {count} {(count == 1 ? "triple" : "triples")}. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
+		} else if (process.Bot.Triples.Remove(subj, pred, obj))
+			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted a triple. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
+		else
+			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
+		
+		return "";
 	}
 }

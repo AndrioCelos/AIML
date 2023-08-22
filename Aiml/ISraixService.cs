@@ -1,7 +1,7 @@
 ﻿using System.Xml;
 
 namespace Aiml; 
-/// <summary>Implements a handler for the AIML <c>sraix</c> template element.</summary>
+/// <summary>Implements a handler for the AIML <see cref="Tags.SraiX"/> template element.</summary>
 public interface ISraixService {
 	/// <summary>Processes a request and returns the result.</summary>
 	/// <param name="text">The evaluated contents of the <c>sraix</c> element.</param>

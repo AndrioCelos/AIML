@@ -78,7 +78,7 @@ public class AimlLoader(Bot bot) {
 	public bool ForwardCompatible { get; internal set; }
 
 	static AimlLoader() {
-		foreach (var type in typeof(TemplateNode).Assembly.GetTypes().Where(t => !t.IsAbstract && typeof(TemplateNode).IsAssignableFrom(t))) {
+		foreach (var type in typeof(TemplateNode).Assembly.GetTypes().Where(t => !t.IsAbstract && t != typeof(TemplateText) && typeof(TemplateNode).IsAssignableFrom(t))) {
 			var elementName = type.Name.ToLowerInvariant();
 			if (tags.ContainsKey(elementName)) continue;
 
