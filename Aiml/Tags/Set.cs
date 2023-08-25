@@ -21,9 +21,9 @@ public sealed class Set(TemplateElementCollection key, bool local, TemplateEleme
 
 	[AimlLoaderContructor]
 	public Set(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection children)
-		: this(var ?? name ?? throw new ArgumentException("<set> element must have a name or var attribute", nameof(name)), var is not null, children) {
+		: this(var ?? name ?? throw new AimlException("<set> element must have a 'name' or 'var' attribute"), var is not null, children) {
 		if (name is not null && var is not null)
-			throw new ArgumentException("<set> element cannot have both name and var attributes.", nameof(var));
+			throw new AimlException("<set> element cannot have both 'name' and 'var' attributes.");
 	}
 
 	public override string Evaluate(RequestProcess process) {
@@ -34,10 +34,10 @@ public sealed class Set(TemplateElementCollection key, bool local, TemplateEleme
 		if (process.Bot.Config.UnbindPredicatesWithDefaultValue &&
 			value == (this.LocalVar ? process.Bot.Config.DefaultPredicate : process.Bot.Config.GetDefaultPredicate(key))) {
 			dictionary.Remove(key);
-			process.Log(LogLevel.Diagnostic, "In element <set>: Unbound " + (this.LocalVar ? "local variable" : "predicate") + " '" + key + "' with default value '" + value + "'.");
+			process.Log(LogLevel.Diagnostic, $"In element <set>: Unbound {(this.LocalVar ? "local variable" : "predicate")} '{key}' with default value '{value}'.");
 		} else {
 			dictionary[key] = value;
-			process.Log(LogLevel.Diagnostic, "In element <set>: Set " + (this.LocalVar ? "local variable" : "predicate") + " '" + key + "' to '" + value + "'.");
+			process.Log(LogLevel.Diagnostic, $"In element <set>: Set {(this.LocalVar ? "local variable" : "predicate")} '{key}' to '{value}'.");
 		}
 
 		return value;

@@ -33,20 +33,20 @@ public sealed class SraiX(TemplateElementCollection service, TemplateElementColl
 		try {
 			if (AimlLoader.sraixServices.TryGetValue(serviceName, out var service)) {
 				var text = this.Children?.Evaluate(process) ?? "";
-				process.Log(LogLevel.Diagnostic, "In element <sraix>: querying service '" + serviceName + "' to process text '" + text + "'.");
+				process.Log(LogLevel.Diagnostic, $"In element <sraix>: querying service '{serviceName}' to process text '{text}'.");
 				text = service.Process(text, this.Attributes, process);
-				process.Log(LogLevel.Diagnostic, "In element <sraix>: the request returned '" + text + "'.");
+				process.Log(LogLevel.Diagnostic, $"In element <sraix>: the request returned '{text}'.");
 				return text;
 			} else {
 				process.User.Predicates["SraixException"] = nameof(KeyNotFoundException);
-				process.User.Predicates["SraixExceptionMessage"] = "No service named '" + serviceName + "' is known.";
-				process.Log(LogLevel.Warning, "In element <sraix>: no service named '" + serviceName + "' is known.");
+				process.User.Predicates["SraixExceptionMessage"] = $"No service named '{serviceName}' is known.";
+				process.Log(LogLevel.Warning, $"In element <sraix>: no service named '{serviceName}' is known.");
 				return (this.DefaultReply ?? new TemplateElementCollection(new Srai(new TemplateElementCollection("SRAIXFAILED")))).Evaluate(process);
 			}
 		} catch (Exception ex) {
 			process.User.Predicates["SraixException"] = ex.GetType().Name;
 			process.User.Predicates["SraixExceptionMessage"] = ex.Message;
-			process.Log(LogLevel.Warning, "In element <sraix>: service '" + serviceName + "' threw " + ex.GetType().Name + ":\n" + ex.ToString());
+			process.Log(LogLevel.Warning, $"In element <sraix>: service {serviceName} threw {ex.GetType().Name}:\n{ex}");
 			return (this.DefaultReply ?? new TemplateElementCollection(new Srai(new TemplateElementCollection("SRAIXFAILED")))).Evaluate(process);
 		}
 	}

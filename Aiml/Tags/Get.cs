@@ -27,11 +27,11 @@ public sealed class Get(TemplateElementCollection key, TemplateElementCollection
 
 	[AimlLoaderContructor]
 	public Get(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection? tuple)
-		: this(var ?? name ?? throw new ArgumentException("<get> element must have a name or var attribute", nameof(name)), tuple, var is not null) {
+		: this(var ?? name ?? throw new AimlException("<get> element must have a 'name' or 'var' attribute"), tuple, var is not null) {
 		if (name is not null && var is not null)
-			throw new ArgumentException("<get> element cannot have both name and var attributes.", nameof(var));
+			throw new AimlException("<get> element cannot have both 'name' and 'var' attributes.");
 		if (name is not null && tuple is not null)
-			throw new ArgumentException("<get> element with tuple attribute must have a var attribute instead of name.", nameof(var));
+			throw new AimlException("<get> element with 'tuple' attribute must have a 'var' attribute instead of 'name'.");
 	}
 
 	public override string Evaluate(RequestProcess process) {
@@ -39,7 +39,7 @@ public sealed class Get(TemplateElementCollection key, TemplateElementCollection
 			// Get a value from a tuple.
 			var variable = this.Key.Evaluate(process);
 			if (!variable.IsClauseVariable()) {
-				process.Log(LogLevel.Warning, $"In element <get>: var was not a valid tuple query variable: {variable}");
+				process.Log(LogLevel.Warning, $"In element <get>: 'var' was not a valid tuple query variable: {variable}");
 				return process.Bot.Config.DefaultPredicate;
 			}
 			var tupleString = this.TupleString.Evaluate(process);

@@ -10,14 +10,14 @@ namespace Aiml.Tags;
 ///			<item>
 ///				<term><c><![CDATA[<condition name='predicate' value='v'>]]></c> or <c><![CDATA[<condition var='variable' value='v'>]]></c></term>
 ///				<description>
-///					<para>If the value of the specified predicate or local variable matches the specified value, it returns its contents; otherwise it returns the empty string.</para>	
+///					<para>If the value of the specified predicate or local variable matches the specified value, it returns its contents; otherwise it returns the empty string.</para>
 ///				</description>
 ///			</item>
 ///			<item>
 ///				<term><c><![CDATA[<condition name='predicate'>]]></c> or <c><![CDATA[<condition var='variable'>]]></c></term>
 ///				<description>
 ///					<para>This form can only contain <c>li</c> elements as direct children.</para>
-///					<para>The first <c>li</c> element that matches the value of the specified predicate or variable is returned.</para>	
+///					<para>The first <c>li</c> element that matches the value of the specified predicate or variable is returned.</para>
 ///					<para>The last <c>li</c> element may lack a <c>value</c> attribute, in which case it will match by default if no earlier item matches.</para>
 ///				</description>
 ///			</item>
@@ -25,7 +25,7 @@ namespace Aiml.Tags;
 ///				<term><c><![CDATA[<condition>]]></c></term>
 ///				<description>
 ///					<para>This form can only contain <c>li</c> elements as direct children.</para>
-///					<para>The first <c>li</c> element whose specified predicate or variable matches its specified value is returned.</para>	
+///					<para>The first <c>li</c> element whose specified predicate or variable matches its specified value is returned.</para>
 ///					<para>The last <c>li</c> element may lack attributes, in which case it will match by default if no earlier item matches.</para>
 ///				</description>
 ///			</item>
@@ -40,11 +40,11 @@ public sealed class Condition : TemplateNode {
 
 	[AimlLoaderContructor]
 	public Condition(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection? value, Li[] items, TemplateElementCollection children)
-		: this(name ?? var, var is not null, items.Length > 0 ? items : new[] { new Li(value ?? throw new ArgumentException("<condition> element without <li> items must have a value attribute.", nameof(value)), children) }) {
+		: this(name ?? var, var is not null, items.Length > 0 ? items : new[] { new Li(value ?? throw new AimlException("<condition> element without <li> items must have a 'value' attribute."), children) }) {
 		if (name is not null && var is not null)
-			throw new ArgumentException("<condition> element cannot have both name and var attributes.", nameof(var));
+			throw new AimlException("<condition> element cannot have both 'name' and 'var' attributes.");
 		if (name is null && var is null && items.Length == 0)
-			throw new ArgumentException("<condition> element without <li> children must have a name or var attribute.", nameof(var));
+			throw new AimlException("<condition> element without <li> children must have a 'name' or 'var' attribute.");
 	}
 	public Condition(TemplateElementCollection? key, bool localVar, Li[] items) {
 		var hasDefaultItem = false;
@@ -53,7 +53,7 @@ public sealed class Condition : TemplateNode {
 			if (hasDefaultItem) throw new AimlException("<condition> element default <li> item must be last.");
 			if (item.Key == null) {
 				if (item.Value != null) {
-					item.Key = key ?? throw new AimlException("<condition> element or a non-default <li> item must have a name or var attribute.");
+					item.Key = key ?? throw new AimlException("<condition> element or a non-default <li> item must have a 'name' or 'var' attribute.");
 					item.LocalVar = localVar;
 				} else
 					hasDefaultItem = true;
@@ -103,7 +103,7 @@ public sealed class Condition : TemplateNode {
 				// Default case.
 				return item;
 			} else {
-				process.Log(LogLevel.Warning, "In element <condition>: Missing name, var or value attribute in <li>.");
+				process.Log(LogLevel.Warning, "In element <condition>: Missing 'name', 'var' or 'value' attribute in <li>.");
 			}
 		}
 
@@ -117,7 +117,7 @@ public sealed class Condition : TemplateNode {
 		do {
 			++loops;
 			if (loops > process.Bot.Config.LoopLimit) {
-				process.Log(LogLevel.Warning, "Loop limit exceeded. User: " + process.User.ID + "; path: \"" + process.Path + "\"");
+				process.Log(LogLevel.Warning, $"Loop limit exceeded. User: {process.User.ID}; path: \"{process.Path}\"");
 				throw new LoopLimitException();
 			}
 
@@ -137,9 +137,10 @@ public sealed class Condition : TemplateNode {
 		[AimlLoaderContructor]
 		public Li(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection? value, TemplateElementCollection children) : this(name ?? var, var is not null, value, children) {
 			if (name is not null && var is not null)
-				throw new ArgumentException("<li> element cannot have both name and var attributes.", nameof(var));
+				throw new AimlException("<li> element cannot have both 'name' and 'var' attributes.");
 		}
 		public Li(TemplateElementCollection value, TemplateElementCollection children) : this(null, false, value, children) { }
+		public Li(TemplateElementCollection children) : this(null, false, null, children) { }
 
 		public override string Evaluate(RequestProcess process) => this.EvaluateChildren(process);
 	}

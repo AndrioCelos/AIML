@@ -1,4 +1,6 @@
-﻿namespace Aiml.Tags;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace Aiml.Tags;
 /// <summary>Evaluates the content as an arithmetic expression.</summary>
 /// <remarks>
 ///		<para>This element supports decimal <see cref="double"/> values, operators, functions and parentheses. Whitespace is ignored.</para>
@@ -49,7 +51,7 @@ public sealed class Calculate(TemplateElementCollection children) : RecursiveTem
 	public override string Evaluate(RequestProcess process) {
 		var s = this.EvaluateChildren(process);
 		if (string.IsNullOrWhiteSpace(s)) {
-			process.Log(LogLevel.Warning, "In element <calculate>: invalid syntax " + s);
+			process.Log(LogLevel.Warning, "In element <calculate>: syntax error: " + s);
 			return "unknown";
 		}
 
@@ -58,7 +60,7 @@ public sealed class Calculate(TemplateElementCollection children) : RecursiveTem
 			var result = EvaluateExpr(process, s, 0, ref pos);
 			return pos >= s.Length ? result.ToString() : throw new FormatException();
 		} catch (FormatException) {
-			process.Log(LogLevel.Warning, "In element <calculate>: invalid syntax " + s);
+			process.Log(LogLevel.Warning, "In element <calculate>: syntax error: " + s);
 			return "unknown";
 		}
 	}
@@ -127,47 +129,47 @@ public sealed class Calculate(TemplateElementCollection children) : RecursiveTem
 						++pos;
 					}
 					v1 = functionName.ToLowerInvariant() switch {
-						"pi" => Math.PI,
-						"π" => Math.PI,
-						"e" => Math.E,
-						"abs" => Math.Abs(args[0]),
-						"acos" => Math.Acos(args[0]),
-						"asin" => Math.Asin(args[0]),
-						"atan" => args.Count > 1 ? Math.Atan2(args[0], args[1]) : Math.Atan(args[0]),
-						"atan2" => Math.Atan2(args[0], args[1]),
-						"ceiling" => Math.Ceiling(args[0]),
-						"ceil" => Math.Ceiling(args[0]),
-						"cos" => Math.Cos(args[0]),
-						"cosh" => Math.Cosh(args[0]),
-						"exp" => Math.Exp(args[0]),
-						"floor" => Math.Floor(args[0]),
-						"log" => args.Count > 1 ? Math.Log(args[0], args[1]) : Math.Log(args[0]),
-						"log10" => Math.Log(args[0], 10),
-						"ln" => Math.Log(args[0], Math.E),
-						"max" => args.Count > 0 ? args.Max() : throw new FormatException(),
-						"min" => args.Count > 0 ? args.Min() : throw new FormatException(),
-						"pow" => Math.Pow(args[0], args[1]),
-						"round" => Math.Round(args[0], args.Count == 2 ? (int) args[1] : 0),
-						"roundcom" => Math.Round(args[0], args.Count == 2 ? (int) args[1] : 0, MidpointRounding.AwayFromZero),
-						"sign" => Math.Sign(args[0]),
-						"sin" => Math.Sin(args[0]),
-						"sinh" => Math.Sinh(args[0]),
-						"sqrt" => Math.Sqrt(args[0]),
-						"tan" => Math.Tan(args[0]),
-						"tanh" => Math.Tanh(args[0]),
-						"truncate" => Math.Truncate(args[0]),
-						"fix" => Math.Truncate(args[0]),
+						"pi"       => args.Count == 0 ? Math.PI : ThrowArgumentCountException("pi", args, 0),
+						"π"        => args.Count == 0 ? Math.PI : ThrowArgumentCountException("π", args, 0),
+						"e"        => args.Count == 0 ? Math.E : ThrowArgumentCountException("e", args, 0),
+						"abs"      => args.Count == 1 ? Math.Abs(args[0]) : ThrowArgumentCountException("abs", args, 1),
+						"acos"     => args.Count == 1 ? Math.Acos(args[0]) : ThrowArgumentCountException("acos", args, 1),
+						"asin"     => args.Count == 1 ? Math.Asin(args[0]) : ThrowArgumentCountException("asin", args, 1),
+						"atan"     => args.Count switch { 1 => Math.Atan(args[0]), 2 => Math.Atan2(args[0], args[1]), _ => ThrowArgumentCountException("atan", args, 1, 2) },
+						"atan2"    => args.Count == 2 ? Math.Atan2(args[0], args[1]) : ThrowArgumentCountException("atan2", args, 2),
+						"ceiling"  => args.Count == 1 ? Math.Ceiling(args[0]) : ThrowArgumentCountException("ceiling", args, 1),
+						"ceil"     => args.Count == 1 ? Math.Ceiling(args[0]) : ThrowArgumentCountException("ceil", args, 1),
+						"cos"      => args.Count == 1 ? Math.Cos(args[0]) : ThrowArgumentCountException("cos", args, 1),
+						"cosh"     => args.Count == 1 ? Math.Cosh(args[0]) : ThrowArgumentCountException("cosh", args, 1),
+						"exp"      => args.Count == 1 ? Math.Exp(args[0]) : ThrowArgumentCountException("exp", args, 1),
+						"floor"    => args.Count == 1 ? Math.Floor(args[0]) : ThrowArgumentCountException("floor", args, 1),
+						"log"      => args.Count switch { 1 => Math.Log(args[0]), 2 => Math.Log(args[0], args[1]), _ => ThrowArgumentCountException("log", args, 1, 2) },
+						"log10"    => args.Count == 1 ? Math.Log(args[0], 10) : ThrowArgumentCountException("log10", args, 1),
+						"ln"       => args.Count == 1 ? Math.Log(args[0]) : ThrowArgumentCountException("ln", args, 1),
+						"max"      => args.Count > 0 ? args.Max() : throw new FormatException($"Invalid number of arguments for max: expected at least 1 but found {args.Count}"),
+						"min"      => args.Count > 0 ? args.Min() : throw new FormatException($"Invalid number of arguments for max: expected at least 1 but found {args.Count}"),
+						"pow"      => args.Count == 2 ? Math.Pow(args[0], args[1]) : ThrowArgumentCountException("pow", args, 2),
+						"round"    => args.Count is 1 or 2 ? Math.Round(args[0], args.Count == 2 ? (int) args[1] : 0) : ThrowArgumentCountException("round", args, 1, 2),
+						"roundcom" => args.Count is 1 or 2 ? Math.Round(args[0], args.Count == 2 ? (int) args[1] : 0, MidpointRounding.AwayFromZero) : ThrowArgumentCountException("roundcom", args, 1, 2),
+						"sign"     => args.Count == 1 ? Math.Sign(args[0]) : ThrowArgumentCountException("sign", args, 1),
+						"sin"      => args.Count == 1 ? Math.Sin(args[0]) : ThrowArgumentCountException("sin", args, 1),
+						"sinh"     => args.Count == 1 ? Math.Sinh(args[0]) : ThrowArgumentCountException("sinh", args, 1),
+						"sqrt"     => args.Count == 1 ? Math.Sqrt(args[0]) : ThrowArgumentCountException("sqrt", args, 1),
+						"tan"      => args.Count == 1 ? Math.Tan(args[0]) : ThrowArgumentCountException("tan", args, 1),
+						"tanh"     => args.Count == 1 ? Math.Tanh(args[0]) : ThrowArgumentCountException("tanh", args, 1),
+						"truncate" => args.Count == 1 ? Math.Truncate(args[0]) : ThrowArgumentCountException("truncate", args, 1),
+						"fix"      => args.Count == 1 ? Math.Truncate(args[0]) : ThrowArgumentCountException("fix", args, 1),
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-						"acosh" => Math.Acosh(args[0]),
-						"asinh" => Math.Asinh(args[0]),
-						"atanh" => Math.Atanh(args[0]),
+						"acosh"    => args.Count == 1 ? Math.Acosh(args[0]) : ThrowArgumentCountException("acosh", args, 1),
+						"asinh"    => args.Count == 1 ? Math.Asinh(args[0]) : ThrowArgumentCountException("asinh", args, 1),
+						"atanh"    => args.Count == 1 ? Math.Atanh(args[0]) : ThrowArgumentCountException("atanh", args, 1),
 #else
-						"acosh" => throw new PlatformNotSupportedException("acosh is unavailable in .NET Standard 2.0."),
-						"asinh" => throw new PlatformNotSupportedException("asinh is unavailable in .NET Standard 2.0."),
-						"atanh" => throw new PlatformNotSupportedException("atanh is unavailable in .NET Standard 2.0."),
+						"acosh"    => throw new PlatformNotSupportedException("acosh is unavailable in .NET Standard 2.0."),
+						"asinh"    => throw new PlatformNotSupportedException("asinh is unavailable in .NET Standard 2.0."),
+						"atanh"    => throw new PlatformNotSupportedException("atanh is unavailable in .NET Standard 2.0."),
 #endif
-						_ => throw new FormatException()
-					};
+						_ => throw new FormatException($"Invalid function name: {functionName.ToLowerInvariant()}")
+					};;
 				} else
 					throw new FormatException();
 				break;
@@ -257,4 +259,15 @@ public sealed class Calculate(TemplateElementCollection children) : RecursiveTem
 	}
 	private static bool SubstringAt(string haystack, string needle, int pos)
 		=> haystack.Length - pos >= needle.Length && haystack.Substring(pos, needle.Length) == needle;
+
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+	[DoesNotReturn]
+#endif
+	private static double ThrowArgumentCountException(string functionName, List<double> list, int min, int max)
+		=> throw new FormatException($"Invalid number of arguments for {functionName}: expected {min} ~ {max} but found {list.Count}");
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+	[DoesNotReturn]
+#endif
+	private static double ThrowArgumentCountException(string functionName, List<double> list, int expected)
+		=> throw new FormatException($"Invalid number of arguments for {functionName}: expected {expected} but found {list.Count}");
 }

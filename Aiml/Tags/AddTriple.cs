@@ -30,6 +30,10 @@ public sealed class AddTriple(TemplateElementCollection subj, TemplateElementCol
 			process.Log(LogLevel.Warning, $"In element <addtriple>: Could not add triple with missing elements. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
 			return "";
 		}
+		if (subj.IsClauseVariable() || pred.IsClauseVariable() || obj.IsClauseVariable()) {
+			process.Log(LogLevel.Warning, $"In element <addtriple>: Could not add triple with variables. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
+			return "";
+		}
 
 		if (process.Bot.Triples.Add(subj, pred, obj))
 			process.Log(LogLevel.Diagnostic, $"In element <addtriple>: Added a new triple. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");

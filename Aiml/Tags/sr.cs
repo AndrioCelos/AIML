@@ -9,10 +9,10 @@ namespace Aiml.Tags;
 public sealed class SR : TemplateNode {
 	public override string Evaluate(RequestProcess process) {
 		var text = process.star.Count > 0 ? process.star[0] : process.Bot.Config.DefaultWildcard;
-		process.Log(LogLevel.Diagnostic, "In element <sr>: processing text '" + text + "'.");
+		process.Log(LogLevel.Diagnostic, $"In element <sr>: processing text '{text}'.");
 		var newRequest = new Aiml.Request(text, process.User, process.Bot);
 		text = process.Bot.ProcessRequest(newRequest, false, false, process.RecursionDepth + 1, out _).ToString();
-		process.Log(LogLevel.Diagnostic, "In element <sr>: the request returned '" + text + "'.");
+		process.Log(LogLevel.Diagnostic, $"In element <sr>: the request returned '{text}'.");
 		return text;
 	}
 }
