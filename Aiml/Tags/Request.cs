@@ -13,12 +13,9 @@ namespace Aiml.Tags;
 ///		<para>This element is defined by the AIML 2.0 specification.</para>
 /// </remarks>
 /// <seealso cref="Input"/><seealso cref="Response"/><seealso cref="That"/>
-public sealed class Request(TemplateElementCollection index) : TemplateNode {
-	public TemplateElementCollection Index { get; set; } = index;
+public sealed class Request(TemplateElementCollection? index) : TemplateNode {
+	public TemplateElementCollection? Index { get; set; } = index;
 
-	public override string Evaluate(RequestProcess process) {
-		var indexString = this.Index?.Evaluate(process);
-		var index = !string.IsNullOrWhiteSpace(indexString) ? int.Parse(indexString) : 1;
-		return process.User.GetRequest(index);
-	}
+	public override string Evaluate(RequestProcess process)
+		=> TryParseIndex("request", process, this.Index, out var index) ? process.User.GetRequest(index) : process.Bot.Config.DefaultHistory;
 }

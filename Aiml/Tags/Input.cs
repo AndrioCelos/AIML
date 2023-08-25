@@ -16,13 +16,6 @@ namespace Aiml.Tags;
 public sealed class Input(TemplateElementCollection? index) : TemplateNode {
 	public TemplateElementCollection? Index { get; set; } = index;
 
-	public override string Evaluate(RequestProcess process) {
-		string? indexText; var index = 1;
-		indexText = this.Index?.Evaluate(process);
-
-		if (!string.IsNullOrWhiteSpace(indexText))
-			index = int.Parse(indexText);
-
-		return process.User.GetInput(index);
-	}
+	public override string Evaluate(RequestProcess process)
+		=> TryParseIndex("input", process, this.Index, out var index) ? process.User.GetInput(index) : process.Bot.Config.DefaultHistory;
 }

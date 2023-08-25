@@ -15,11 +15,6 @@ namespace Aiml.Tags;
 public sealed class ThatStar(TemplateElementCollection? index) : TemplateNode {
 	public TemplateElementCollection? Index { get; private set; } = index;
 
-	public override string Evaluate(RequestProcess process) {
-		var index = this.Index is not null ? int.Parse(this.Index.Evaluate(process)) : 1;
-
-		if (process.thatstar.Count < index) return process.Bot.Config.DefaultWildcard;
-		var match = process.thatstar[index - 1];
-		return match == "" ? process.Bot.Config.DefaultWildcard : match;
-	}
+	public override string Evaluate(RequestProcess process)
+		=> TryParseIndex("thatstar", process, this.Index, out var index) ? process.GetThatStar(index) : process.Bot.Config.DefaultWildcard;
 }

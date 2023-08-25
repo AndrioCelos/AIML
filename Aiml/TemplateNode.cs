@@ -8,6 +8,18 @@ namespace Aiml;
 public abstract class TemplateNode {
 	/// <summary>When overridden, returns the evaluated content of this node.</summary>
 	public abstract string Evaluate(RequestProcess process);
+
+	protected static bool TryParseIndex(string elementName, RequestProcess process, TemplateElementCollection? attr, out int index) {
+		if (attr is null) {
+			index = 1;
+			return true;
+		}
+		var s = attr.Evaluate(process);
+		if (int.TryParse(s, out index) && index > 0)
+			return true;
+		process.Log(LogLevel.Warning, $"In element <{elementName}>: 'index' was not valid: {s}");
+		return false;
+	}
 }
 
 /// <summary>Represents a template-side tag that can recursively contain other nodes.</summary>

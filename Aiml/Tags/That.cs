@@ -16,17 +16,18 @@ public sealed class That(TemplateElementCollection? index) : TemplateNode {
 	public TemplateElementCollection? Index { get; set; } = index;
 
 	public override string Evaluate(RequestProcess process) {
-		var responseIndex = 1; var sentenceIndex = 1;
-		var indices = this.Index?.Evaluate(process);
+		if (this.Index is null) return process.User.That;
 
-		if (!string.IsNullOrWhiteSpace(indices)) {
-			// Parse the index attribute.
-			var fields = indices!.Split(',');
-			if (fields.Length > 2) throw new ArgumentException("index attribute of a that tag evaluated to an invalid value (" + indices + ").");
-
-			responseIndex = int.Parse(fields[0].Trim());
-			if (fields.Length == 2)
-				sentenceIndex = int.Parse(fields[1].Trim());
+		var indices = this.Index.Evaluate(process);
+#if NET5_0_OR_GREATER
+		var fields = indices.Split(',', StringSplitOptions.TrimEntries);
+#else
+		var fields = indices.Split(',');
+		for (var i = 0; i < fields.Length; i++) fields[i] = fields[i].Trim();
+#endif
+		if (fields.Length != 2 || !int.TryParse(fields[0], out var responseIndex) || responseIndex <= 0 || !int.TryParse(fields[1], out var sentenceIndex) || sentenceIndex <= 0) {
+			process.Log(LogLevel.Warning, $"In element <that>: 'index' was not valid: {indices}");
+			return process.Bot.Config.DefaultHistory;
 		}
 
 		return process.User.GetThat(responseIndex, sentenceIndex);

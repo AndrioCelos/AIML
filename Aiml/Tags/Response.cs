@@ -16,9 +16,6 @@ namespace Aiml.Tags;
 public sealed class Response(TemplateElementCollection? index) : TemplateNode {
 	public TemplateElementCollection? Index { get; set; } = index;
 
-	public override string Evaluate(RequestProcess process) {
-		var indexString = this.Index?.Evaluate(process);
-		var index = !string.IsNullOrWhiteSpace(indexString) ? int.Parse(indexString) : 1;
-		return process.User.GetResponse(index);
-	}
+	public override string Evaluate(RequestProcess process)
+		=> TryParseIndex(elementName: "response", process, this.Index, out var index) ? process.User.GetResponse(index) : process.Bot.Config.DefaultHistory;
 }
