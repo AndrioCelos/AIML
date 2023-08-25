@@ -15,29 +15,37 @@
 ///		<para>This element is part of an extension to AIML derived from Program AB and Program Y.</para>
 /// </remarks>
 /// <seealso cref="AddTriple"/><seealso cref="Select"/><seealso cref="Uniq"/>
-public sealed class DeleteTriple(TemplateElementCollection subj, TemplateElementCollection pred, TemplateElementCollection obj) : TemplateNode {
-	public TemplateElementCollection Subject { get; } = subj;
-	public TemplateElementCollection Predicate { get; } = pred;
-	public TemplateElementCollection Object { get; } = obj;
+public sealed class DeleteTriple : TemplateNode {
+	public TemplateElementCollection Subject { get; }
+	public TemplateElementCollection? Predicate { get; }
+	public TemplateElementCollection? Object { get; }
+
+	public DeleteTriple(TemplateElementCollection subj, TemplateElementCollection? pred, TemplateElementCollection? obj) {
+		this.Subject = subj;
+		this.Predicate = pred;
+		this.Object = obj;
+		if (pred is null && obj is not null)
+			throw new AimlException("<deletetriple> element cannot have 'obj' attribute without 'pred' attribute.");
+	}
 
 	public override string Evaluate(RequestProcess process) {
 		var subj = this.Subject.Evaluate(process).Trim();
-		var pred = this.Predicate.Evaluate(process).Trim();
-		var obj = this.Object.Evaluate(process).Trim();
+		var pred = this.Predicate?.Evaluate(process).Trim();
+		var obj = this.Object?.Evaluate(process).Trim();
 
 		if (string.IsNullOrEmpty(subj)) {
 			process.Log(LogLevel.Warning, "In element <deletetriple>: Subject was empty.");
 			return "";
 		}
 
-		if (string.IsNullOrEmpty(obj)) {
+		if (string.IsNullOrEmpty(pred) || string.IsNullOrEmpty(obj)) {
 			var count = string.IsNullOrEmpty(pred) ? process.Bot.Triples.RemoveAll(subj) : process.Bot.Triples.RemoveAll(subj, pred);
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted {count} {(count == 1 ? "triple" : "triples")}. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
 		} else if (process.Bot.Triples.Remove(subj, pred, obj))
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted a triple. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
 		else
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
-		
+
 		return "";
 	}
 }

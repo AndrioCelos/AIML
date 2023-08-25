@@ -81,28 +81,43 @@ namespace Aiml.Tags;
 /// </example>
 /// <seealso cref="DeleteTriple"/><seealso cref="DeleteTriple"/><seealso cref="Get"/><seealso cref="Uniq"/>
 public sealed class Select : TemplateNode {
-	public TemplateElementCollection Variables { get; }
+	public TemplateElementCollection? Variables { get; }
 	public Clause[] Clauses { get; }
 
-	public Select(TemplateElementCollection variables, Clause[] clauses) {
-		if (clauses.Length == 0) throw new ArgumentException("A <select> element must contain at least one clause.", nameof(clauses));
+	public Select(TemplateElementCollection? variables, Clause[] clauses) {
+		if (clauses.Length == 0) throw new AimlException("<select> element must contain at least one clause.");
+		if (!clauses[0].Affirm) throw new AimlException("<select> element first clause cannot be <notq>.");
 		this.Variables = variables;
 		this.Clauses = clauses;
+	}
+
+	private IReadOnlyCollection<string> GetDefaultVariables() {
+		var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		foreach (var clause in this.Clauses) {
+			if (clause.Subject.Count == 1 && clause.Subject[0] is TemplateText subjNode && subjNode.Text.Trim() is var subj && subj.IsClauseVariable())
+				set.Add(subj);
+			if (clause.Subject.Count == 1 && clause.Predicate[0] is TemplateText predNode && predNode.Text.Trim() is var pred && pred.IsClauseVariable())
+				set.Add(pred);
+			if (clause.Subject.Count == 1 && clause.Subject[0] is TemplateText objNode && objNode.Text.Trim() is var obj && obj.IsClauseVariable())
+				set.Add(obj);
+		}
+		return set;
 	}
 
 	public override string Evaluate(RequestProcess process) {
 		var resolvedClauses = (from c in this.Clauses select c.Evaluate(process)).ToList();
 		var visibleVars = this.Variables != null
 			? this.Variables.Evaluate(process).Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries)
-			: Array.Empty<string>();
+			: this.GetDefaultVariables();
 
 		// Begin a depth-first search for matching tuples.
 		var tuples = SelectFromRemainingClauses(process, null, resolvedClauses, 0);
 #if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
-		return string.Join(' ', (from t in tuples select t.Encode(visibleVars)).Distinct());
+		var s = string.Join(' ', (from t in tuples select t.Encode(visibleVars)).Distinct());
 #else
-		return string.Join(" ", (from t in tuples select t.Encode(visibleVars)).Distinct());
+		var s = string.Join(" ", (from t in tuples select t.Encode(visibleVars)).Distinct());
 #endif
+		return s == "" ? "nil" : s;
 	}
 
 	private static IEnumerable<Tuple?> SelectFromRemainingClauses(RequestProcess process, Tuple? partial, IReadOnlyList<(string subj, string pred, string obj, bool affirm)> resolvedClauses, int startIndex) {
@@ -167,6 +182,6 @@ public sealed class Select : TemplateNode {
 				throw new AimlException("<select> element cannot have content.");
 		}
 
-		return new Select(vars ?? throw new AimlException("Missing required attribute vars in <select> element"), clauses.ToArray());
+		return new Select(vars, clauses.ToArray());
 	}
 }
