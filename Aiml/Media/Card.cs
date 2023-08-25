@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>A block-level rich media element that combines a title, subtitle, <see cref="Image"/>, and zero or more <see cref="Button"/> elements.</summary>
@@ -10,19 +10,19 @@ public class Card(string? imageUrl, string? title, string? subtitle, List<Button
 	public string? Subtitle { get; } = subtitle;
 	public IReadOnlyList<Button> Buttons { get; } = buttons?.AsReadOnly() ?? Array.AsReadOnly(Array.Empty<Button>());
 
-	public static Card FromXml(XmlElement element) {
+	public static Card FromXml(XElement element, Response response) {
 		string? imageUrl = null, title = null, subtitle = null;
 		List<Button>? buttons = null;
-		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
-			switch (childElement.Name.ToLowerInvariant()) {
-				case "image": imageUrl = childElement.InnerText; break;
-				case "title": title = childElement.InnerText; break;
-				case "subtitle": subtitle = childElement.InnerText; break;
+		foreach (var childElement in element.Elements()) {
+			switch (childElement.Name.LocalName.ToLowerInvariant()) {
+				case "image": imageUrl = childElement.Value; break;
+				case "title": title = childElement.Value; break;
+				case "subtitle": subtitle = childElement.Value; break;
 				case "button":
 					buttons ??= new();
-					buttons.Add(Button.FromXml(childElement));
+					buttons.Add(Button.FromXml(childElement, response));
 					break;
-				default: throw new AimlException($"Unknown attribute {childElement.Name} in <card> element.");
+				default: throw new AimlException($"Unknown attribute {childElement.Name}", element);
 			}
 		}
 		return new(imageUrl, title, subtitle, buttons);

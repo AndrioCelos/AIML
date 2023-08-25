@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml.Tags;
 /// <summary>Represents an out-of-band or rich media tag. These are not fully parsed during template processing.</summary>
@@ -8,44 +9,46 @@ namespace Aiml.Tags;
 ///		<para>The <c>oob</c> element is defined by the AIML 2.0 specification.
 ///			Rich media elements are defined by the AIML 2.1 draft specification.</para>
 /// </remarks>
-public sealed class Oob(string name, string attributes, TemplateElementCollection children) : RecursiveTemplateTag(children) {
+public sealed class Oob(string name, IEnumerable<XAttribute> attributes, TemplateElementCollection children) : RecursiveTemplateTag(children) {
+	private readonly XAttribute[] attributes = attributes.ToArray();
+
 	public string Name { get; } = name;
-	public string Attributes { get; } = attributes;
+	public IReadOnlyList<XAttribute> Attributes => Array.AsReadOnly(this.attributes);
 
-	public override string Evaluate(RequestProcess process)
-		=> this.Children != null
-			? $"<{this.Name}{this.Attributes}>{this.EvaluateChildren(process)}</{this.Name}>"
-			: $"<{this.Name}{this.Attributes}/>";
-
-	public static Oob FromXml(XmlElement el, AimlLoader loader, params string[] childTags) {
+	public override string Evaluate(RequestProcess process) {
 		var builder = new StringBuilder();
-		foreach (var attribute in el.Attributes.Cast<XmlAttribute>()) {
-			builder.Append(' ');
-			builder.Append(attribute.OuterXml);
-		}
+		using var writer = XmlWriter.Create(builder, new() { OmitXmlDeclaration = true });
+		writer.WriteStartElement(this.Name);
+		foreach (var attr in this.attributes)
+			writer.WriteAttributeString(attr.Name.LocalName, attr.Value);
+		writer.WriteRaw(this.EvaluateChildren(process));
+		writer.WriteEndElement();
+		writer.Flush();
+		return builder.ToString();
+	}
 
+	public static Oob FromXml(XElement el, AimlLoader loader) => FromXml(el, loader, null);
+	public static Oob FromXml(XElement el, AimlLoader loader, params string[]? childElements) {
 		var oldFC = loader.ForwardCompatible;
-		if (el.HasChildNodes) {
-			loader.ForwardCompatible = true;
-			var children = new List<TemplateNode>();
-			foreach (XmlNode childNode in el.ChildNodes) {
-				if (childNode.NodeType == XmlNodeType.Whitespace) {
-					children.Add(new TemplateText(" "));
-				} else if (childNode.NodeType is XmlNodeType.Text or XmlNodeType.SignificantWhitespace) {
-					children.Add(new TemplateText(childNode.InnerText));
-				} else if (childNode is XmlElement childElement) {
-					if (Array.IndexOf(childTags, childElement.Name) >= 0) {
-						children.Add(FromXml(childElement, loader, childElement.Name.Equals("card", StringComparison.InvariantCultureIgnoreCase) ? new[] { "title", "subtitle", "image", "button" } :
-							childElement.Name.Equals("button", StringComparison.InvariantCultureIgnoreCase) ? new[] { "text", "postback", "url" } : Array.Empty<string>()));
-					} else if (childTags.Length == 0)
+		loader.ForwardCompatible = true;
+		var children = new List<TemplateNode>();
+		foreach (var childNode in el.Nodes()) {
+			switch (childNode) {
+				case XText textNode:
+					children.Add(new TemplateText(textNode.Value));
+					break;
+				case XElement childElement:
+					if (childElements is not null) {
+						if (!childElements.Contains(childElement.Name.LocalName, StringComparer.OrdinalIgnoreCase))
+							throw new AimlException($"Invalid child element <{childElement.Name}>", el);
+						AimlLoader.mediaElements.TryGetValue(childElement.Name.LocalName, out var childData);
+						children.Add(FromXml(childElement, loader, childData.childElements));
+					} else
 						children.Add(loader.ParseElement(childElement));
-					else
-						throw new AimlException($"<{childElement.Name}> is not a valid child of <{el.Name}>.");
-				}
+					break;
 			}
-			loader.ForwardCompatible = oldFC;
-			return new Oob(el.Name, builder.ToString(), new TemplateElementCollection(children.ToArray()));
-		} else
-			return new Oob(el.Name, builder.ToString(), TemplateElementCollection.Empty);
+		}
+		loader.ForwardCompatible = oldFC;
+		return new Oob(el.Name.LocalName, el.Attributes(), new TemplateElementCollection(children));
 	}
 }

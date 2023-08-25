@@ -7,11 +7,11 @@ public class PatternNodeTests {
 	[Test]
 	public void AddChild() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("TEST"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("testing"), new("2") }, template);
 		Assert.IsNull(node.Children["TEST"].Children["<that>"].Children["*"].Children["<topic>"].Children["testing"].Template);
 
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template2 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("TEST"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("testing") }, template2);
 		Assert.AreSame(template, node.Children["TEST"].Children["<that>"].Children["*"].Children["<topic>"].Children["testing"].Children["2"].Template);
 		Assert.AreSame(template2, node.Children["TEST"].Children["<that>"].Children["*"].Children["<topic>"].Children["testing"].Template);
@@ -20,7 +20,7 @@ public class PatternNodeTests {
 	[Test]
 	public void AddChild_Set() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("number", true), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 
 		var child = node.SetChildren.Single();
@@ -31,7 +31,7 @@ public class PatternNodeTests {
 	[Test]
 	public void Search() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("TEST"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 
 		var test = new AimlTest("test");
@@ -46,8 +46,8 @@ public class PatternNodeTests {
 	public void Search_Wildcard() {
 		// ^ should be able to match multiple words and take precedence over *.
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("^"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 
@@ -61,8 +61,8 @@ public class PatternNodeTests {
 	public void Search_Sets() {
 		// Sets should be able to match multiple words and take precedence over *.
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("testset", true), new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 
@@ -77,7 +77,7 @@ public class PatternNodeTests {
 	[Test]
 	public void Search_SetsTakeLongestMatch() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("testset", true), new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 
 		var test = new AimlTest("foo bar baz");
@@ -91,8 +91,8 @@ public class PatternNodeTests {
 	[Test]
 	public void Search_OptionalWildcard() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("TEST"), new("^"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("TEST"), new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 
@@ -106,8 +106,8 @@ public class PatternNodeTests {
 	public void Search_PriorityWildcard() {
 		// # should take precedence over exact match.
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("#"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("TEST"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 
@@ -120,9 +120,9 @@ public class PatternNodeTests {
 	[Test]
 	public void Search_PriorityWildcardExampleFromAimlSpec() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template3 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
+		var template3 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("_"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("$WHO"), new("IS"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 		node.AddChild(new PathToken[] { new("HELLO"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template3);
@@ -145,7 +145,7 @@ public class PatternNodeTests {
 	[Test]
 	public void Search_AdjacentWildcardsAreUngreedy() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("*"), new("*"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 
 		var test = new AimlTest("1 2 3");
@@ -158,9 +158,9 @@ public class PatternNodeTests {
 	[Test]
 	public void GetTemplatesTest() {
 		var node = new PatternNode(StringComparer.InvariantCultureIgnoreCase);
-		var template = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template2 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
-		var template3 = new Template(new AimlTest().Bot, AimlTest.ParseXmlElement("<template/>"), TemplateElementCollection.Empty, null);
+		var template = new Template(TemplateElementCollection.Empty);
+		var template2 = new Template(TemplateElementCollection.Empty);
+		var template3 = new Template(TemplateElementCollection.Empty);
 		node.AddChild(new PathToken[] { new("_"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template);
 		node.AddChild(new PathToken[] { new("$WHO"), new("IS"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template2);
 		node.AddChild(new PathToken[] { new("HELLO"), new("ANGELINA"), PathToken.ThatSeparator, new("*"), PathToken.TopicSeparator, new("*") }, template3);

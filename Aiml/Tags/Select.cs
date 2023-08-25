@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Tags;
 /// <summary>Selects tuples consisting of values for variables that fulfil a list of query conditions involving triples, and returns a space-separated list of tuple identifiers.</summary>
@@ -85,8 +85,8 @@ public sealed class Select : TemplateNode {
 	public Clause[] Clauses { get; }
 
 	public Select(TemplateElementCollection? variables, Clause[] clauses) {
-		if (clauses.Length == 0) throw new AimlException("<select> element must contain at least one clause.");
-		if (!clauses[0].Affirm) throw new AimlException("<select> element first clause cannot be <notq>.");
+		if (clauses.Length == 0) throw new ArgumentException("<select> element must contain at least one clause.", nameof(clauses));
+		if (!clauses[0].Affirm) throw new ArgumentException("<select> element first clause cannot be <notq>.", nameof(clauses));
 		this.Variables = variables;
 		this.Clauses = clauses;
 	}
@@ -94,11 +94,11 @@ public sealed class Select : TemplateNode {
 	private IReadOnlyCollection<string> GetDefaultVariables() {
 		var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		foreach (var clause in this.Clauses) {
-			if (clause.Subject.Count == 1 && clause.Subject[0] is TemplateText subjNode && subjNode.Text.Trim() is var subj && subj.IsClauseVariable())
+			if (clause.Subject.Count == 1 && clause.Subject.First() is TemplateText subjNode && subjNode.Text.Trim() is var subj && subj.IsClauseVariable())
 				set.Add(subj);
-			if (clause.Subject.Count == 1 && clause.Predicate[0] is TemplateText predNode && predNode.Text.Trim() is var pred && pred.IsClauseVariable())
+			if (clause.Subject.Count == 1 && clause.Predicate.First() is TemplateText predNode && predNode.Text.Trim() is var pred && pred.IsClauseVariable())
 				set.Add(pred);
-			if (clause.Subject.Count == 1 && clause.Subject[0] is TemplateText objNode && objNode.Text.Trim() is var obj && obj.IsClauseVariable())
+			if (clause.Subject.Count == 1 && clause.Subject.First() is TemplateText objNode && objNode.Text.Trim() is var obj && obj.IsClauseVariable())
 				set.Add(obj);
 		}
 		return set;
@@ -159,27 +159,30 @@ public sealed class Select : TemplateNode {
 		}
 	}
 
-	public static Select FromXml(XmlElement element, AimlLoader loader) {
+	public static Select FromXml(XElement element, AimlLoader loader) {
 		var clauses = new List<Clause>();
 
-		var vars = element.Attributes["vars"] is XmlAttribute attribute ? new TemplateElementCollection(attribute.Value) : null;
+		var vars = element.Attribute("vars") is XAttribute attribute ? new TemplateElementCollection(attribute.Value) : null;
 
-		foreach (XmlNode node in element.ChildNodes) {
-			if (node is XmlElement childElement) {
-				switch (childElement.Name.ToLowerInvariant()) {
-					case "vars":
-						if (vars is not null) throw new AimlException("<select> element vars attribute provided multiple times.");
-						vars = TemplateElementCollection.FromXml(childElement, loader);
-						break;
-					case "q":
-					case "notq":
-						clauses.Add(loader.ParseChildElementInternal<Clause>(childElement));
-						break;
-					default:
-						throw new AimlException("<select> element cannot have content.");
-				}
-			} else if (node.NodeType is XmlNodeType.Text or XmlNodeType.CDATA)
-				throw new AimlException("<select> element cannot have content.");
+		foreach (var node in element.Nodes()) {
+			switch (node) {
+				case XText:
+					throw new AimlException("Cannot have text content.", element);
+				case XElement childElement:
+					switch (childElement.Name.LocalName.ToLowerInvariant()) {
+						case "vars":
+							if (vars is not null) throw new AimlException("'vars' attribute provided multiple times.", element);
+							vars = TemplateElementCollection.FromXml(childElement, loader);
+							break;
+						case "q":
+						case "notq":
+							clauses.Add(loader.ParseChildElementInternal<Clause>(childElement));
+							break;
+						default:
+							throw new AimlException($"Invalid child element <{childElement.Name.LocalName}>", element);
+					}
+					break;
+			}
 		}
 
 		return new Select(vars, clauses.ToArray());

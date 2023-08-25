@@ -1,11 +1,10 @@
-﻿using System.Xml;
-
-namespace Aiml;
-public class Template(Bot bot, XmlNode xmlNode, TemplateElementCollection content, string? fileName) {
-	public Bot Bot { get; } = bot;
-	public XmlNode XmlNode { get; } = xmlNode;
+﻿namespace Aiml;
+public class Template(TemplateElementCollection content, string? uri, int lineNumber) {
 	public TemplateElementCollection Content { get; } = content;
-	public string? FileName { get; set; } = fileName;
+	public string? Uri { get; set; } = uri;
+	public int LineNumber { get; set; } = lineNumber;
+
+	public Template(TemplateElementCollection content) : this(content, null, 0) { }
 
 	public IList<Tags.Test> GetTests() {
 		var tests = new List<Tags.Test>();

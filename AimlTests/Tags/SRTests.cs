@@ -1,4 +1,5 @@
-﻿using Aiml.Tags;
+﻿using System.Xml.Linq;
+using Aiml.Tags;
 using NUnit.Framework.Constraints;
 
 namespace Aiml.Tests.Tags;
@@ -7,7 +8,7 @@ public class SRTests {
 	[Test]
 	public void Evaluate() {
 		var test = new AimlTest();
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>test</pattern>
@@ -22,8 +23,8 @@ public class SRTests {
 
 	[Test]
 	public void EvaluateWithLimitedRecursion() {
-		var test = new AimlTest() { ExpectingWarning = true };
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		var test = new AimlTest();
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>*</pattern>

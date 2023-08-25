@@ -1,13 +1,20 @@
 ﻿using System.Runtime.Serialization;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml;
 [Serializable]
 public class AimlException : XmlException {
-	public AimlException() : this("An error occurred while loading AIML.") { }
-	public AimlException(string message) : base(message) { }
-	public AimlException(string message, Exception inner) : base(message, inner) { }
+	public AimlException(string message, XElement element) : base(AugmentMessage(message, element)) { }
+	public AimlException(string message, XElement element, Exception innerException) : base(AugmentMessage(message, element), innerException) { }
 	protected AimlException(SerializationInfo info, StreamingContext context) : base(info, context) { }
+
+	private static string AugmentMessage(string message, XElement element)
+		=> ((IXmlLineInfo) element).HasLineInfo()
+			? $"In element <{element.Name}>: {message}, {(element.BaseUri != "" ? element.BaseUri : "<no URI>")} line {((IXmlLineInfo) element).LineNumber} column {((IXmlLineInfo) element).LinePosition}"
+			: element.BaseUri != ""
+			? $"In element <{element.Name}>: {message}, {element.BaseUri}"
+			: $"In element <{element.Name}>: {message}";
 }
 
 [Serializable]

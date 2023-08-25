@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml;
 /// <summary>Represents an AIML template-side node.</summary>
@@ -94,23 +94,15 @@ public class TemplateElementCollection(params TemplateNode[] tags) : IReadOnlyLi
 	/// <summary>Returns a new TagCollection containing all nodes contained in a given XML node.</summary>
 	/// <param name="el">The XML node whose children should be parsed.</param>
 	/// <returns>A new TagCollection containing the results of calling Tag.Parse to construct child nodes from the XML node's children.</returns>
-	public static TemplateElementCollection FromXml(XmlElement el, AimlLoader loader) {
+	public static TemplateElementCollection FromXml(XElement el, AimlLoader loader) {
 		var tagList = new List<TemplateNode>();
-		foreach (XmlNode node2 in el.ChildNodes) {
-			switch (node2.NodeType) {
-				case XmlNodeType.Whitespace:
-					tagList.Add(TemplateText.Space);
+		foreach (var node2 in el.Nodes()) {
+			switch (node2) {
+				case XText textNode:
+					tagList.Add(new TemplateText(textNode.Value));
 					break;
-				case XmlNodeType.Text:
-					tagList.Add(new TemplateText(node2.InnerText));
-					break;
-				case XmlNodeType.CDATA:
-				case XmlNodeType.SignificantWhitespace:
-					tagList.Add(new TemplateText(node2.InnerText, false));
-					break;
-				default:
-					if (node2 is XmlElement childElement)
-						tagList.Add(loader.ParseElement(childElement));
+				case XElement childElement:
+					tagList.Add(loader.ParseElement(childElement));
 					break;
 			}
 		}

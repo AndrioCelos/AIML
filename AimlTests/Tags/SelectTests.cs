@@ -1,4 +1,5 @@
-﻿using Aiml.Tags;
+﻿using System.Xml.Linq;
+using Aiml.Tags;
 using NUnit.Framework.Internal;
 
 namespace Aiml.Tests.Tags;
@@ -58,7 +59,7 @@ public class SelectTests {
 	<q><subj>?x</subj><pred>r</pred><obj>?y</obj></q>
 	<notq><subj>?y</subj><pred>attr</pred><obj>0</obj></notq>
 </select>";
-		var tag = Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader);
+		var tag = Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader);
 		Assert.AreEqual("?x", tag.Variables?.ToString());
 		Assert.AreEqual(2, tag.Clauses.Length);
 		Assert.IsTrue(tag.Clauses[0].Affirm);
@@ -78,31 +79,31 @@ public class SelectTests {
 	<q><subj>?x</subj><pred>r</pred><obj>?y</obj></q>
 	<notq><subj>?y</subj><pred>attr</pred><obj>0</obj></notq>
 </select>";
-		var tag = Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader);
+		var tag = Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader);
 		Assert.IsNull(tag.Variables);
 	}
 
 	[Test]
 	public void FromXmlWithoutClauses() {
 		const string xml = "<select/>";
-		Assert.Throws<AimlException>(() => Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader));
+		Assert.Throws<ArgumentException>(() => Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader));
 	}
 
 	[Test]
 	public void FromXmlWithInvalidContent() {
 		const string xml = "<select>foo</select>";
-		Assert.Throws<AimlException>(() => Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader));
+		Assert.Throws<AimlException>(() => Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader));
 	}
 
 	[Test]
 	public void FromXmlWithInvalidElement() {
 		const string xml = "<select><foo/></select>";
-		Assert.Throws<AimlException>(() => Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader));
+		Assert.Throws<AimlException>(() => Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader));
 	}
 
 	[Test]
 	public void FromXmlWithNotQFirst() {
 		const string xml = "<select><notq><subj>?x</subj><pred>attr</pred><obj>0</obj></notq></select>";
-		Assert.Throws<AimlException>(() => Select.FromXml(AimlTest.ParseXmlElement(xml), new AimlTest().Bot.AimlLoader));
+		Assert.Throws<ArgumentException>(() => Select.FromXml(XElement.Parse(xml), new AimlTest().Bot.AimlLoader));
 	}
 }

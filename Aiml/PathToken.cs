@@ -5,13 +5,11 @@ public class PathToken(string text, bool isSet) {
 	/// <summary>Specifies whether this <see cref="PathToken"/> is a <c>set</c> tag.</summary>
 	public bool IsSet { get; } = isSet;
 
-	public static PathToken ThatSeparator { get; } = new PathToken("<that>", false);
-	public static PathToken TopicSeparator { get; } = new PathToken("<topic>", false);
+	public static readonly PathToken Star = new("*", false);
+	public static readonly PathToken ThatSeparator = new("<that>", false);
+	public static readonly PathToken TopicSeparator = new("<topic>", false);
 
 	public PathToken(string text) : this(text, false) { }
 
-	public static PathToken Parse(string s) {
-		s = s.Trim();
-		return s.StartsWith("<set>") && s.EndsWith("</set>") ? new PathToken(s[5..^6].Trim(), true) : new PathToken(s, false);
-	}
+	public override string ToString() => this.IsSet ? $"<set>{this.Text}</set>" : this.Text;
 }

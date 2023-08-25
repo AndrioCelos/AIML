@@ -1,11 +1,4 @@
-﻿using NUnit.Framework;
-using Aiml;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Aiml.Media;
+﻿using Aiml.Media;
 
 namespace Aiml.Tests;
 

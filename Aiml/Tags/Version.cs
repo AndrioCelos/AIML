@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace Aiml.Tags;
 /// <summary>Returns the version of the AIML interpreter.</summary>
 /// <remarks>

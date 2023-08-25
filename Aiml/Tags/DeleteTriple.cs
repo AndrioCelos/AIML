@@ -25,7 +25,7 @@ public sealed class DeleteTriple : TemplateNode {
 		this.Predicate = pred;
 		this.Object = obj;
 		if (pred is null && obj is not null)
-			throw new AimlException("<deletetriple> element cannot have 'obj' attribute without 'pred' attribute.");
+			throw new ArgumentException("<deletetriple> element cannot have 'obj' attribute without 'pred' attribute.", nameof(pred));
 	}
 
 	public override string Evaluate(RequestProcess process) {
@@ -39,9 +39,9 @@ public sealed class DeleteTriple : TemplateNode {
 		}
 
 		if (string.IsNullOrEmpty(pred) || string.IsNullOrEmpty(obj)) {
-			var count = string.IsNullOrEmpty(pred) ? process.Bot.Triples.RemoveAll(subj) : process.Bot.Triples.RemoveAll(subj, pred);
+			var count = string.IsNullOrEmpty(pred) ? process.Bot.Triples.RemoveAll(subj) : process.Bot.Triples.RemoveAll(subj, pred!);
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted {count} {(count == 1 ? "triple" : "triples")}. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
-		} else if (process.Bot.Triples.Remove(subj, pred, obj))
+		} else if (process.Bot.Triples.Remove(subj, pred!, obj!))
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: Deleted a triple. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");
 		else
 			process.Log(LogLevel.Diagnostic, $"In element <deletetriple>: No such triple exists. {{ Subject = {subj}, Predicate = {pred}, Object = {obj} }}");

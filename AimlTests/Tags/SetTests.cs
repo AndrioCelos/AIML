@@ -21,12 +21,12 @@ public class SetTests {
 
 	[Test]
 	public void ParseWithNameAndVar() {
-		Assert.Throws<AimlException>(() => new Aiml.Tags.Set(name: new("foo"), var: new("bar"), children: new("variable")));
+		Assert.Throws<ArgumentException>(() => new Aiml.Tags.Set(name: new("foo"), var: new("bar"), children: new("variable")));
 	}
 
 	[Test]
 	public void ParseWithNoAttributes() {
-		Assert.Throws<AimlException>(() => new Aiml.Tags.Set(name: null, var: null, children: new("variable")));
+		Assert.Throws<ArgumentException>(() => new Aiml.Tags.Set(name: null, var: null, children: new("variable")));
 	}
 
 	[Test]

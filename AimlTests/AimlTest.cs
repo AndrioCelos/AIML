@@ -1,21 +1,15 @@
-﻿using System.Xml;
-
-namespace Aiml.Tests;
+﻿namespace Aiml.Tests;
+/// <summary>Creates a mock setup for AIML tests.</summary>
 internal class AimlTest {
-	public bool ExpectingWarning { get; set; }
 	public Bot Bot { get; }
 	public User User { get; }
 	public RequestProcess RequestProcess { get; }
 
-	public string TestTemplate {
-		set {
-			var document = new XmlDocument();
-			document.LoadXml($"<aiml version='2.1'><category><pattern>TEST</pattern><template>{value}</template></category></aiml>");
-			this.Bot.AimlLoader.LoadAIML(document, "test.aiml");
-		}
-	}
+	private bool expectingWarning;
 
+	/// <summary>Initialises a new <see cref="AimlTest"/> with a new bot with the default settings.</summary>
 	public AimlTest() : this(new Bot()) { }
+	/// <summary>Initialises a new <see cref="AimlTest"/> from the specified <see cref="Bot"/>.</summary>
 	public AimlTest(Bot bot) {
 		this.Bot = bot;
 		this.User = new("tester", this.Bot);
@@ -23,31 +17,33 @@ internal class AimlTest {
 
 		this.Bot.LogMessage += this.Bot_LogMessage;
 	}
+	/// <summary>Initialises a new <see cref="AimlTest"/> using the specified <see cref="Random"/>.</summary>
 	public AimlTest(Random random) : this(new Bot(random)) { }
-	public AimlTest(string sampleRequestSentenceText) : this() {
-		this.RequestProcess = new(new(new(sampleRequestSentenceText, this.User, this.Bot), sampleRequestSentenceText), 0, false);
-	}
+	/// <summary>Initialises a new <see cref="AimlTest"/> using the specified sample request.</summary>
+	public AimlTest(string sampleRequestSentenceText) : this()
+		=> this.RequestProcess = new(new(new(sampleRequestSentenceText, this.User, this.Bot), sampleRequestSentenceText), 0, false);
 
-	public Response Chat() => this.Chat("TEST");
-	public Response Chat(string requestText) {
-		var response = this.Bot.Chat(new(requestText, this.User, this.Bot));
-		if (this.ExpectingWarning)
+	/// <summary>Asserts that the specified method causes a warning message to be logged.</summary>
+	public void AssertWarning(Action action) {
+		this.expectingWarning = true;
+		action();
+		if (this.expectingWarning)
 			Assert.Fail("Expected warning was not raised.");
-		return response;
 	}
-
+	/// <summary>Asserts that the specified function causes a warning message to be logged.</summary>
+	/// <returns>The return value of <paramref name="f"/>.</returns>
 	public TResult AssertWarning<TResult>(Func<TResult> f) {
-		this.ExpectingWarning = true;
+		this.expectingWarning = true;
 		var result = f();
-		if (this.ExpectingWarning)
+		if (this.expectingWarning)
 			Assert.Fail("Expected warning was not raised.");
 		return result;
 	}
 
 	private void Bot_LogMessage(object? sender, LogMessageEventArgs e) {
 		if (e.Level == LogLevel.Warning) {
-			if (this.ExpectingWarning)
-				this.ExpectingWarning = false;
+			if (this.expectingWarning)
+				this.expectingWarning = false;
 			else
 				Assert.Fail($"AIML request raised a warning: {e.Message}");
 		}
@@ -65,11 +61,4 @@ internal class AimlTest {
 		Assert.Fail($"Node '{string.Join(' ', pathTokens)} is not a leaf.");
 		throw new KeyNotFoundException("No match");
 	}
-
-	internal static XmlDocument ParseXmlDocument(string xml) {
-		var xmlDocument = new XmlDocument();
-		xmlDocument.LoadXml(xml);
-		return xmlDocument;
-	}
-	internal static XmlElement ParseXmlElement(string xml) => ParseXmlDocument(xml).DocumentElement!;
 }

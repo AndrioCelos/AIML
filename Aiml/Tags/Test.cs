@@ -29,10 +29,10 @@ public sealed class Test(string name, TemplateElementCollection expectedResponse
 
 	[AimlLoaderContructor]
 	public Test(TemplateElementCollection name, TemplateElementCollection? expected, TemplateElementCollection? regex, TemplateElementCollection children)
-		: this(name.Single() is TemplateText text ? text.Text : throw new AimlException("<test> attribute 'name' must be constant."),
-			  expected ?? regex ?? throw new AimlException("<test> element must have an 'expected' or 'regex' attribute."), regex is not null, children) {
+		: this(name.Single() is TemplateText text ? text.Text : throw new ArgumentException("<test> attribute 'name' must be constant.", nameof(name)),
+			  expected ?? regex ?? throw new ArgumentException("<test> element must have an 'expected' or 'regex' attribute."), regex is not null, children) {
 		if (expected is not null && regex is not null)
-			throw new AimlException("<test> element cannot have both 'expected' and 'regex' attributes.");
+			throw new ArgumentException("<test> element cannot have both 'expected' and 'regex' attributes.");
 	}
 
 	public override string Evaluate(RequestProcess process) {

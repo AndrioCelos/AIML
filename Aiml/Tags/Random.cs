@@ -9,7 +9,7 @@ public sealed class Random : TemplateNode {
 	public Li[] Items { get; set; }
 
 	public Random(Li[] items) {
-		if (items.Length == 0) throw new AimlException("<random> element must contain at least one item.");
+		if (items.Length == 0) throw new ArgumentException("<random> element must contain at least one item.", nameof(items));
 		this.Items = items;
 	}
 

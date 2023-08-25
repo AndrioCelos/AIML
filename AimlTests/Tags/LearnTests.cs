@@ -1,4 +1,6 @@
-﻿using System.Xml;
+﻿using System.Text;
+using System.Xml;
+using System.Xml.Linq;
 using Aiml.Tags;
 using NUnit.Framework.Internal;
 
@@ -7,9 +9,9 @@ namespace Aiml.Tests.Tags;
 public class LearnTests {
 	[Test]
 	public void Parse() {
-		var el = AimlTest.ParseXmlElement("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>");
+		var el = XElement.Parse("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>");
 		var tag = new Learn(el);
-		Assert.AreSame(el, tag.XmlElement);
+		Assert.AreSame(el, tag.Element);
 	}
 
 	[TestCase("<learn/>", TestName = "Parse (no category)")]
@@ -18,13 +20,13 @@ public class LearnTests {
 	[TestCase("<learn><category><foo/></category></learn>", TestName = "Parse (invalid category element)")]
 	[TestCase("<learn><pattern>TEST</pattern></learn>", TestName = "Parse (invalid AIML element)")]
 	public void ParseInvalid(string xml) {
-		Assert.Throws<AimlException>(() => new Learn(AimlTest.ParseXmlElement(xml)));
+		Assert.Throws<ArgumentException>(() => new Learn(XElement.Parse(xml)));
 	}
 
 	[Test]
 	public void Evaluate() {
 		var test = new AimlTest();
-		var tag = new Learn(AimlTest.ParseXmlElement("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
+		var tag = new Learn(XElement.Parse("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
 		test.User.Requests.Add(new("TEST", test.User, test.Bot));
 		tag.Evaluate(test.RequestProcess);
 
@@ -35,20 +37,28 @@ public class LearnTests {
 	[Test]
 	public void Evaluate_DoesNotModifyOriginalElement() {
 		var test = new AimlTest();
-		var tag = new Learn(AimlTest.ParseXmlElement("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
-		var xml = tag.XmlElement.OuterXml;
+		var tag = new Learn(XElement.Parse("<learn><category><pattern>TEST LEARN</pattern><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
+		var xml = GetOuterXml(tag.Element);
 		test.User.Requests.Add(new("TEST", test.User, test.Bot));
 		tag.Evaluate(test.RequestProcess);
 
-		Assert.AreEqual(xml, tag.XmlElement.OuterXml);
+		Assert.AreEqual(xml, GetOuterXml(tag.Element));
 	}
 
 	[Test]
 	public void EvaluateWithThatAndTopic() {
 		var test = new AimlTest();
-		var tag = new Learn(AimlTest.ParseXmlElement("<learn><category><pattern>TEST LEARN</pattern><that>LEARNED</that><topic>TESTS</topic><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
+		var tag = new Learn(XElement.Parse("<learn><category><pattern>TEST LEARN</pattern><that>LEARNED</that><topic>TESTS</topic><template>Original: <eval><input/></eval>; Current: <input/></template></category></learn>"));
 		test.User.Requests.Add(new("TEST", test.User, test.Bot));
 		tag.Evaluate(test.RequestProcess);
 		AimlTest.GetTemplate(test.User.Graphmaster, "TEST", "LEARN", "<that>", "LEARNED", "<topic>", "TESTS");
+	}
+
+	internal static string GetOuterXml(XElement element) {
+		var builder = new StringBuilder();
+		using var writer = XmlWriter.Create(builder);
+		element.WriteTo(writer);
+		writer.Flush();
+		return builder.ToString();
 	}
 }

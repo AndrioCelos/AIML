@@ -1,4 +1,5 @@
-﻿using System.Xml;
+﻿using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>
@@ -13,17 +14,18 @@ public class Reply(string text, string postback) : IMediaElement {
 	public string Text { get; } = text;
 	public string Postback { get; } = postback;
 
-	public static Reply FromXml(XmlElement el) {
+	public static Reply FromXml(XElement element, Response response) {
 		string? text = null, postback = null;
-
-		foreach (var el2 in el.ChildNodes.OfType<XmlElement>()) {
-			switch (el2.Name.ToLowerInvariant()) {
-				case "text": text = el2.InnerText; break;
-				case "postback": postback = el2.InnerText; break;
+		foreach (var childElement in element.Elements()) {
+			switch (childElement.Name.LocalName.ToLowerInvariant()) {
+				case "text": text = childElement.Value; break;
+				case "postback": if (!childElement.IsEmpty) postback = childElement.Value; break;
 			}
 		}
-		if (text == null && postback == null)
-			text = postback = el.InnerText;
-		return new(text ?? "", postback ?? text ?? "");
+		if (text == null) {
+			text = string.Join(null, from node in element.Nodes().OfType<XText>() select node.Value);
+			text = Regex.Replace(text, @"\s+", " ");
+		}
+		return new(text, postback ?? text);
 	}
 }

@@ -11,7 +11,6 @@ namespace AimlVoice;
 public class Program {
 	internal static Bot? bot;
 	internal static User? user;
-	internal static SpeechRecognitionEngine? recognizer;
 	internal static SpeechSynthesizer? synthesizer;
 	internal static Dictionary<string, Grammar> grammars = new(StringComparer.InvariantCultureIgnoreCase);
 	internal static string progressMessage = "";
@@ -306,9 +305,11 @@ public class Program {
 
 				foreach (var el in message.InlineElements) {
 					switch (el) {
-						case LineBreak: Console.WriteLine(); break;
+						case LineBreak:
+							Console.WriteLine();
+							break;
 						case SpeakElement speak:
-							builder.AppendSsml(new XmlNodeReader(speak.SSML));
+							builder.AppendSsml(speak.SSML.CreateReader());
 							responseBuilder.Append(speak.AltText);
 							break;
 						default:

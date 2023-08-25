@@ -21,10 +21,7 @@ internal class PluginLoadContext(string pluginPath) : AssemblyLoadContext {
 		if (assemblyName.Name == null)
 			return null;
 		var path = Path.Combine("plugins", $"{assemblyName.Name}.dll");
-		if (File.Exists(path))
-			return this.LoadFromAssemblyPath(path);
-
-		return null;
+		return File.Exists(path) ? this.LoadFromAssemblyPath(path) : null;
 	}
 
 	protected override IntPtr LoadUnmanagedDll(string unmanagedDllName) {

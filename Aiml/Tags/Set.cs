@@ -21,9 +21,9 @@ public sealed class Set(TemplateElementCollection key, bool local, TemplateEleme
 
 	[AimlLoaderContructor]
 	public Set(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection children)
-		: this(var ?? name ?? throw new AimlException("<set> element must have a 'name' or 'var' attribute"), var is not null, children) {
+		: this(var ?? name ?? throw new ArgumentException("<set> element must have a 'name' or 'var' attribute"), var is not null, children) {
 		if (name is not null && var is not null)
-			throw new AimlException("<set> element cannot have both 'name' and 'var' attributes.");
+			throw new ArgumentException("<set> element cannot have both 'name' and 'var' attributes.");
 	}
 
 	public override string Evaluate(RequestProcess process) {

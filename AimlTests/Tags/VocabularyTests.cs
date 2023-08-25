@@ -1,4 +1,5 @@
-﻿using Aiml.Sets;
+﻿using System.Xml.Linq;
+using Aiml.Sets;
 using Aiml.Tags;
 
 namespace Aiml.Tests.Tags;
@@ -8,7 +9,7 @@ public class VocabularyTests {
 	public void Evaluate() {
 		var test = new AimlTest();
 		test.Bot.Properties["name"] = "Angelina";
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>HELLO WORLD</pattern>

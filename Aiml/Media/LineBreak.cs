@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>An inline rich media element that splits a message into multiple lines.</summary>
@@ -7,5 +7,5 @@ namespace Aiml.Media;
 ///		<para>This element is part of the Pandorabots extension of AIML.</para>
 ///	</remarks>
 public class LineBreak : IMediaElement {
-	public static LineBreak FromXml(XmlElement _) => new();
+	public static LineBreak FromXml(XElement element, Response response) => new();
 }

@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Text;
-using System.Xml;
 
 namespace Aiml.Tags;
 /// <summary>Returns up to one of a choice of child elements depending on the results of matching a predicate against a pattern.</summary>
@@ -40,25 +39,25 @@ public sealed class Condition : TemplateNode {
 
 	[AimlLoaderContructor]
 	public Condition(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection? value, Li[] items, TemplateElementCollection children)
-		: this(name ?? var, var is not null, items.Length > 0 ? items : new[] { new Li(value ?? throw new AimlException("<condition> element without <li> items must have a 'value' attribute."), children) }) {
+		: this(name ?? var, var is not null, items.Length > 0 ? items : new[] { new Li(value ?? throw new ArgumentException("<condition> element without <li> items must have a 'value' attribute.", nameof(value)), children) }) {
 		if (name is not null && var is not null)
-			throw new AimlException("<condition> element cannot have both 'name' and 'var' attributes.");
+			throw new ArgumentException("<condition> element cannot have both 'name' and 'var' attributes.");
 		if (name is null && var is null && items.Length == 0)
-			throw new AimlException("<condition> element without <li> children must have a 'name' or 'var' attribute.");
+			throw new ArgumentException("<condition> element without <li> children must have a 'name' or 'var' attribute.");
 	}
 	public Condition(TemplateElementCollection? key, bool localVar, Li[] items) {
 		var hasDefaultItem = false;
-		if (items.Length == 0) throw new AimlException("<condition> element must contain at least one item.");
+		if (items.Length == 0) throw new ArgumentException("<condition> element must contain at least one item.", nameof(items));
 		foreach (var item in items) {
-			if (hasDefaultItem) throw new AimlException("<condition> element default <li> item must be last.");
+			if (hasDefaultItem) throw new ArgumentException("<condition> element default <li> item must be last.", nameof(items));
 			if (item.Key == null) {
 				if (item.Value != null) {
-					item.Key = key ?? throw new AimlException("<condition> element or a non-default <li> item must have a 'name' or 'var' attribute.");
+					item.Key = key ?? throw new ArgumentException("<condition> element or a non-default <li> item must have a 'name' or 'var' attribute.", nameof(items));
 					item.LocalVar = localVar;
 				} else
 					hasDefaultItem = true;
 			} else if (item.Value == null)
-				throw new AimlException("<condition> element or a non-default <li> item must have a value attribute.");
+				throw new ArgumentException("<condition> element or a non-default <li> item must have a value attribute.", nameof(items));
 		}
 		this.items = items;
 		this.Items = new ReadOnlyCollection<Li>(items);
@@ -137,7 +136,7 @@ public sealed class Condition : TemplateNode {
 		[AimlLoaderContructor]
 		public Li(TemplateElementCollection? name, TemplateElementCollection? var, TemplateElementCollection? value, TemplateElementCollection children) : this(name ?? var, var is not null, value, children) {
 			if (name is not null && var is not null)
-				throw new AimlException("<li> element cannot have both 'name' and 'var' attributes.");
+				throw new ArgumentException("<li> element cannot have both 'name' and 'var' attributes.");
 		}
 		public Li(TemplateElementCollection value, TemplateElementCollection children) : this(null, false, value, children) { }
 		public Li(TemplateElementCollection children) : this(null, false, null, children) { }

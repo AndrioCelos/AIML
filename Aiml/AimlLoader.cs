@@ -1,12 +1,13 @@
 using System.Reflection;
 using System.Xml;
+using System.Xml.Linq;
 using Aiml.Media;
 
 namespace Aiml;
-public delegate TemplateNode TemplateTagParser(XmlElement element, AimlLoader loader);
-public delegate string? OobReplacementHandler(XmlElement element);
-public delegate void OobHandler(XmlElement element);
-public delegate IMediaElement MediaElementParser(XmlElement element);
+public delegate TemplateNode TemplateTagParser(XElement element, AimlLoader loader);
+public delegate string? OobReplacementHandler(XElement element);
+public delegate void OobHandler(XElement element);
+public delegate IMediaElement MediaElementParser(XElement element, Response response);
 
 public class AimlLoader(Bot bot) {
 	private readonly Bot bot = bot;
@@ -15,27 +16,8 @@ public class AimlLoader(Bot bot) {
 		// Elements that the reflection method can't handle
 		{ "learn"    , (el, loader) => new Tags.Learn(el) },
 		{ "learnf"   , (el, loader) => new Tags.LearnF(el) },
-		{ "oob"      , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "oob"      , Tags.Oob.FromXml },
 		{ "select"   , Tags.Select.FromXml },
-
-		// AIML 2.1 draft rich media elements
-		{ "button"   , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "postback", "url") },
-		{ "br"       , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "break"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "card"     , (el, loader) => Tags.Oob.FromXml(el, loader, "image", "title", "subtitle", "button") },
-		{ "carousel" , (el, loader) => Tags.Oob.FromXml(el, loader, "card") },
-		{ "delay"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "image"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "img"      , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "hyperlink", (el, loader) => Tags.Oob.FromXml(el, loader, "text", "url") },
-		{ "link"     , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "url") },
-		{ "list"     , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
-		{ "ul"       , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
-		{ "ol"       , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
-		{ "olist"    , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
-		{ "reply"    , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "postback") },
-		{ "split"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
-		{ "video"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
 
 		// Invalid template-level elements
 		{ "eval"     , SubtagHandler },
@@ -52,31 +34,32 @@ public class AimlLoader(Bot bot) {
 		{ "subtitle" , SubtagHandler },
 		{ "item"     , SubtagHandler }
 	};
-	internal static readonly Dictionary<string, (MediaElementType type, MediaElementParser parser)> mediaElements = new(StringComparer.OrdinalIgnoreCase) {
-		{ "button"   , (MediaElementType.Block, Button.FromXml) },
-		{ "br"       , (MediaElementType.Inline, LineBreak.FromXml) },
-		{ "break"    , (MediaElementType.Inline, LineBreak.FromXml) },
-		{ "card"     , (MediaElementType.Block, Card.FromXml) },
-		{ "carousel" , (MediaElementType.Block, Carousel.FromXml) },
-		{ "delay"    , (MediaElementType.Separator, Delay.FromXml) },
-		{ "image"    , (MediaElementType.Block, Image.FromXml) },
-		{ "img"      , (MediaElementType.Block, Image.FromXml) },
-		{ "hyperlink", (MediaElementType.Inline, Link.FromXml) },
-		{ "link"     , (MediaElementType.Inline, Link.FromXml) },
-		{ "list"     , (MediaElementType.Inline, List.FromXml) },
-		{ "ul"       , (MediaElementType.Inline, List.FromXml) },
-		{ "ol"       , (MediaElementType.Inline, OrderedList.FromXml) },
-		{ "olist"    , (MediaElementType.Inline, OrderedList.FromXml) },
-		{ "reply"    , (MediaElementType.Block, Reply.FromXml) },
-		{ "split"    , (MediaElementType.Separator, Split.FromXml) },
-		{ "video"    , (MediaElementType.Block, Video.FromXml) },
+	internal static readonly Dictionary<string, (MediaElementType type, MediaElementParser parser, string[] childElements)> mediaElements = new(StringComparer.OrdinalIgnoreCase) {
+		{ "a"        , (MediaElementType.Inline, Link.FromXml, Array.Empty<string>()) },
+		{ "button"   , (MediaElementType.Block, Button.FromXml, new[] { "text", "postback", "url" }) },
+		{ "br"       , (MediaElementType.Inline, LineBreak.FromXml, Array.Empty<string>()) },
+		{ "break"    , (MediaElementType.Inline, LineBreak.FromXml, Array.Empty<string>()) },
+		{ "card"     , (MediaElementType.Block, Card.FromXml, new[] { "image", "title", "subtitle", "button" }) },
+		{ "carousel" , (MediaElementType.Block, Carousel.FromXml, new[] { "card" }) },
+		{ "delay"    , (MediaElementType.Separator, Delay.FromXml, Array.Empty<string>()) },
+		{ "image"    , (MediaElementType.Block, Image.FromXml, Array.Empty<string>()) },
+		{ "img"      , (MediaElementType.Block, Image.FromXml, Array.Empty<string>()) },
+		{ "hyperlink", (MediaElementType.Inline, Link.FromXml, new[] { "text", "url" }) },
+		{ "link"     , (MediaElementType.Inline, Link.FromXml, new[] { "text", "url" }) },
+		{ "list"     , (MediaElementType.Inline, List.FromXml, new[] { "item", "li" }) },
+		{ "ul"       , (MediaElementType.Inline, List.FromXml, new[] { "item", "li" }) },
+		{ "ol"       , (MediaElementType.Inline, OrderedList.FromXml, new[] { "item", "li" }) },
+		{ "olist"    , (MediaElementType.Inline, OrderedList.FromXml, new[] { "item", "li" }) },
+		{ "reply"    , (MediaElementType.Block, Reply.FromXml, new[] { "text", "postback" }) },
+		{ "split"    , (MediaElementType.Separator, Split.FromXml, Array.Empty<string>()) },
+		{ "video"    , (MediaElementType.Block, Video.FromXml, Array.Empty<string>()) },
 	};
 	internal static readonly Dictionary<string, OobReplacementHandler> oobHandlers = new(StringComparer.OrdinalIgnoreCase);
 	internal static readonly Dictionary<string, ISraixService> sraixServices = new(StringComparer.OrdinalIgnoreCase);
 	private static readonly Dictionary<Type, TemplateElementBuilder> childElementBuilders = new();
 
 	public static Version AimlVersion => new(2, 1);
-	/// <summary>Whether this loader is loading a newer version of AIML or an <see cref="Tags.Oob"/> element.</summary>
+	/// <summary>Whether this loader is loading a newer version of AIML or an <see cref="Tags.Oob"/> or rich media element.</summary>
 	public bool ForwardCompatible { get; internal set; }
 
 	static AimlLoader() {
@@ -87,9 +70,11 @@ public class AimlLoader(Bot bot) {
 			var builder = new TemplateElementBuilder(type);
 			tags[elementName] = (el, loader) => (TemplateNode) builder.Parse(el, loader);
 		}
+		foreach (var e in mediaElements)
+			tags.Add(e.Key, (node, loader) => Tags.Oob.FromXml(node, loader, e.Value.childElements));
 	}
 
-	private static TemplateNode SubtagHandler(XmlElement el, AimlLoader loader) => loader.ForwardCompatible ? Tags.Oob.FromXml(el, loader) : throw new AimlException($"The <{el.Name}> tag is not valid here.");
+	private static TemplateNode SubtagHandler(XElement el, AimlLoader loader) => loader.ForwardCompatible ? Tags.Oob.FromXml(el, loader) : throw new AimlException("Element is not valid here.", el);
 
 	public static void AddExtension(IAimlExtension extension) => extension.Initialise();
 #if NET5_0_OR_GREATER
@@ -119,7 +104,7 @@ public class AimlLoader(Bot bot) {
 	public static void AddCustomMediaElement(string elementName, MediaElementType mediaElementType, MediaElementParser parser, params string[] childElementNames) {
 		if (!tags.TryAdd(elementName, (node, loader) => Tags.Oob.FromXml(node, loader, childElementNames)))
 			throw new ArgumentException("Cannot add a custom rich media element with the same name as an existing AIML template element.");
-		if (!mediaElements.TryAdd(elementName, (mediaElementType, parser)))
+		if (!mediaElements.TryAdd(elementName, (mediaElementType, parser, childElementNames)))
 			throw new ArgumentException($"A rich media element named <{elementName}> already exists.");
 	}
 
@@ -133,93 +118,102 @@ public class AimlLoader(Bot bot) {
 
 	public void LoadAimlFiles() => this.LoadAimlFiles(Path.Combine(this.bot.ConfigDirectory, this.bot.Config.AimlDirectory));
 	public void LoadAimlFiles(string path) {
-		if (!Directory.Exists(path)) throw new FileNotFoundException("Path not found: " + path, path);
+		if (!Directory.Exists(path)) throw new FileNotFoundException($"AIML directory not found: {path}", path);
 
-		this.bot.Log(LogLevel.Info, "Loading AIML files from " + path);
+		this.bot.Log(LogLevel.Info, $"Loading AIML files from {path}");
 		var files = Directory.GetFiles(path, "*.aiml", SearchOption.AllDirectories);
 
 		foreach (var file in files)
-			this.LoadAIML(file);
+			this.LoadAiml(file);
 
 		GC.Collect();
-		this.bot.Log(LogLevel.Info, "Finished loading the AIML files. " + Convert.ToString(this.bot.Size) + " categories in " + files.Length + (files.Length == 1 ? " file" : " files") + " processed.");
+		this.bot.Log(LogLevel.Info, $"Finished loading the AIML files. {this.bot.Size} {(this.bot.Size == 1 ? "category" : "categories")} in {files.Length} {(files.Length == 1 ? "file" : "files")} processed.");
 	}
 
-	public void LoadAIML(string filename) {
-		this.bot.Log(LogLevel.Info, "Processing AIML file: " + filename);
-		var xmlDocument = new XmlDocument() { PreserveWhitespace = true };
-		xmlDocument.Load(filename);
-		this.LoadAIML(xmlDocument, filename);
+	public void LoadAiml(string path) {
+		this.bot.Log(LogLevel.Info, $"Processing AIML file: {path}");
+		var document = XDocument.Load(path, LoadOptions.SetBaseUri | LoadOptions.SetLineInfo);
+		this.LoadAiml(document);
 	}
-	public void LoadAIML(XmlDocument document) => this.LoadAIML(document, "*");
-	public void LoadAIML(XmlDocument document, string filename) {
-		if (document.DocumentElement is null || !document.DocumentElement.Name.Equals("aiml", StringComparison.OrdinalIgnoreCase))
-			throw new ArgumentException("The specified XML document is not a valid AIML document.", nameof(document));
-		this.LoadAIML(this.bot.Graphmaster, document.DocumentElement, filename);
-	}
-	public void LoadAIML(PatternNode target, XmlElement document) => this.LoadAIML(target, document, "*");
-	public void LoadAIML(PatternNode target, XmlElement document, string filename) {
-		var versionString = document.GetAttribute("version");
+	public void LoadAiml(XDocument document)
+		=> this.LoadAiml(document.Root ?? throw new ArgumentException("The specified XML document is not a valid AIML document.", nameof(document)));
+	public void LoadAiml(XElement aimlElement) {
+		if (!aimlElement.Name.LocalName.Equals("aiml", StringComparison.OrdinalIgnoreCase))
+			throw new ArgumentException("The specified XML document is not a valid AIML document.", nameof(aimlElement));
+		var versionString = aimlElement.Attribute("version")?.Value;
 		this.ForwardCompatible = !Version.TryParse(versionString, out var version) || version > AimlVersion;
-
-		foreach (var el in document.ChildNodes.OfType<XmlElement>()) {
+		this.LoadAimlInto(this.bot.Graphmaster, aimlElement);
+	}
+	public void LoadAimlInto(PatternNode target, XElement aimlElement) {
+		foreach (var el in aimlElement.Nodes().OfType<XElement>()) {
 			if (el.Name == "topic") {
-				this.ProcessTopic(target, el, filename);
+				this.ProcessTopic(target, el);
 			} else if (el.Name == "category") {
-				this.ProcessCategory(target, el, filename);
+				this.ProcessCategory(target, el);
 			}
 		}
 
 		this.bot.InvalidateVocabulary();
 	}
 
-	private void ProcessTopic(PatternNode target, XmlElement el, string filename) {
-		var topicName = "*";
-		if (el.Attributes.Count == 1 & el.Attributes[0].Name == "name") {
-			topicName = el.GetAttribute("name");
-		}
-		foreach (var el2 in el.ChildNodes.OfType<XmlElement>()) {
+	private void ProcessTopic(PatternNode target, XElement el) {
+		if (el.Attribute("name") is not XAttribute attr)
+			throw new AimlException("Missing 'name' attribute", el);
+		var topicName = attr.Value;
+		foreach (var el2 in el.Elements()) {
 			if (el2.Name == "category")
-				this.ProcessCategory(target, el2, topicName, filename);
+				this.ProcessCategory(target, el2, topicName);
 			else
-				throw new AimlException($"Invalid element in topic element: {el2.Name}");
+				throw new AimlException($"Invalid child element <{el2.Name}>", el);
 		}
 	}
 
-	public void ProcessCategory(PatternNode target, XmlElement el, string? filename) => this.ProcessCategory(target, el, "*", filename);
-	public void ProcessCategory(PatternNode target, XmlElement el, string topicName, string? filename) {
-		XmlElement? patternNode = null, templateNode = null, thatNode = null, topicNode = null;
+	public void ProcessCategory(PatternNode target, XElement el) => this.ProcessCategory(target, el, "*");
+	public void ProcessCategory(PatternNode target, XElement el, string topicName) {
+		XElement? patternNode = null, thatNode = null, topicNode = null, templateNode = null;
 
-		foreach (var el2 in el.ChildNodes.OfType<XmlElement>()) {
-			if (el2.Name.Equals("pattern", StringComparison.InvariantCultureIgnoreCase)) patternNode = el2;
-			else if (el2.Name.Equals("template", StringComparison.InvariantCultureIgnoreCase)) templateNode = el2;
-			else if (el2.Name.Equals("that", StringComparison.InvariantCultureIgnoreCase)) thatNode = el2;
-			else if (el2.Name.Equals("topic", StringComparison.InvariantCultureIgnoreCase)) topicNode = el2;
+		foreach (var el2 in el.Elements()) {
+			switch (el2.Name.LocalName.ToLowerInvariant()) {
+				case "pattern": patternNode = el2; break;
+				case "that": thatNode = el2; break;
+				case "topic": topicNode = el2; break;
+				case "template": templateNode = el2; break;
+				default: throw new AimlException($"Invalid child element <{el2.Name}>", el);
+			}
 		}
-		if (patternNode == null) throw new AimlException($"Missing pattern element in a node found in {filename}.");
-		if (templateNode == null) throw new AimlException($"Node missing a template, with pattern '{patternNode.InnerXml}' in file {filename}.");
-		if (string.IsNullOrWhiteSpace(patternNode.InnerXml)) this.bot.Log(LogLevel.Warning, $"Attempted to load a new category with an empty pattern, in file {filename}.");
+		if (patternNode == null) throw new AimlException("Missing <pattern>", el);
+		if (templateNode == null) throw new AimlException("Missing <template>", el);
 
-		// Parse the template.
 		var templateContent = TemplateElementCollection.FromXml(templateNode, this);
 
-		target.AddChild(this.GeneratePath(patternNode, thatNode, topicNode, topicName), new Template(this.bot, templateNode, templateContent, filename));
-		this.bot.Size++;
+		var path = this.GeneratePath(patternNode, thatNode, topicNode, topicName);
+		target.AddChild(path, new(templateContent, templateNode.BaseUri, ((IXmlLineInfo) templateNode).LineNumber), out var existingTemplate);
+		if (existingTemplate is null)
+			this.bot.Size++;
+		else
+			this.bot.Log(LogLevel.Warning, $"Duplicate category: '{string.Join(" ", path)}'\nFirst defined in {existingTemplate.Uri} line {existingTemplate.LineNumber}\nDuplicated in {templateNode.BaseUri} line {((IXmlLineInfo) templateNode).LineNumber}");
 	}
 
-	public TemplateNode ParseElement(XmlElement el)
-		=> tags.TryGetValue(el.Name, out var handler) ? handler(el, this)
-			: this.ForwardCompatible || mediaElements.ContainsKey(el.Name) ? Tags.Oob.FromXml(el, this)
-			: throw new AimlException($"<{el.Name}> is not a valid AIML {AimlVersion} tag.");
+	public TemplateNode ParseElement(XElement el) {
+		if (tags.TryGetValue(el.Name.LocalName, out var handler)) {
+			try {
+				return handler(el, this);
+			} catch (ArgumentException ex) {
+				throw new AimlException(ex.Message, el, ex);
+			}
+		}
+		return this.ForwardCompatible || mediaElements.ContainsKey(el.Name.LocalName) ? Tags.Oob.FromXml(el, this)
+			: throw new AimlException($"Not a valid AIML {AimlVersion} tag", el);
+	}
 
-	internal T ParseChildElementInternal<T>(XmlElement el) => (T) this.ParseChildElementInternal(el, typeof(T));
-	internal object ParseChildElementInternal(XmlElement el, Type type) {
+	internal T ParseChildElementInternal<T>(XElement el) => (T) this.ParseChildElementInternal(el, typeof(T));
+	internal object ParseChildElementInternal(XElement el, Type type) {
 		if (!childElementBuilders.TryGetValue(type, out var builder))
 			builder = childElementBuilders[type] = new(type);
 		return builder.Parse(el, this);
 	}
 
-	private IEnumerable<PathToken> GeneratePath(XmlElement patternNode, XmlElement? thatNode, XmlElement? topicNode, string topic) {
+	private IEnumerable<PathToken> GeneratePath(XElement patternNode, XElement? thatNode, XElement? topicNode, string topic) {
 		var patternTokens = this.ParsePattern(patternNode);
 		var thatTokens = this.ParsePattern(thatNode);
 		var topicTokens = topicNode != null ? this.ParsePattern(topicNode) :
@@ -232,22 +226,32 @@ public class AimlLoader(Bot bot) {
 		foreach (var token in topicTokens) yield return token;
 	}
 
-	private IList<PathToken> ParsePattern(XmlElement? el) {
-		if (el is null) return new[] { new PathToken("*") };
+	private IEnumerable<PathToken> ParsePattern(XElement? el) {
+		if (el is null) {
+			yield return PathToken.Star;
+			yield break;
+		}
 
-		var tokens = new List<PathToken>();
-		foreach (XmlNode node in el.ChildNodes) {
-			if (node.NodeType == XmlNodeType.Text)
-				tokens.AddRange(node.InnerText.Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries).Select(s => new PathToken(s, false)));
-			else if (node is XmlElement el2) {
-				if (el2.Name.Equals("bot", StringComparison.InvariantCultureIgnoreCase))
-					tokens.Add(new PathToken(this.bot.GetProperty(el2.GetAttribute("name")), false));  // Bot properties don't change during the bot's uptime, so we process them here.
-				else if (el2.Name.Equals("set", StringComparison.InvariantCultureIgnoreCase))
-					tokens.Add(new PathToken(el2.InnerText, true));
-				else
-					throw new AimlException("Unknown pattern tag: " + el2.Name);
+		foreach (var node in el.Nodes()) {
+			switch (node) {
+				case XText textNode:
+					foreach (var s in textNode.Value.Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries))
+						yield return new(s);
+					break;
+				case XElement el2:
+					switch (el2.Name.LocalName.ToLowerInvariant()) {
+						case "bot":
+							var attr = el2.Attribute("name") ?? throw new AimlException("Missing 'name' attribute in <bot> tag", el);
+							yield return new(this.bot.GetProperty(attr.Value));  // Bot properties don't change during the bot's uptime, so we process them here.
+							break;
+						case "set":
+							yield return new(el2.Value, true);
+							break;
+						default:
+							throw new AimlException($"Invalid child element <{el2.Name}>", el);
+					}
+					break;
 			}
 		}
-		return tokens;
 	}
 }

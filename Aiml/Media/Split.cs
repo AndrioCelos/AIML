@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>A separator rich media element that splits a response into multiple messages, without any further semantics.</summary>
@@ -8,5 +8,5 @@ namespace Aiml.Media;
 ///	</remarks>
 ///	<seealso cref="Delay"/> <seealso cref="LineBreak"/>
 public class Split : IMediaElement {
-	public static Split FromXml(XmlElement _) => new();
+	public static Split FromXml(XElement element, Response response) => new();
 }

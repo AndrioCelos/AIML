@@ -33,12 +33,10 @@ public class AddTripleTests {
 	public void EvaluateWithInvalidSubject() {
 		var test = new AimlTest();
 		var tag = new AddTriple(new(" "), new("r"), new("bar"));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 		tag = new AddTriple(new("?foo"), new("r"), new("bar"));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 	}
 
@@ -46,12 +44,10 @@ public class AddTripleTests {
 	public void EvaluateWithInvalidPredicate() {
 		var test = new AimlTest();
 		var tag = new AddTriple(new("foo"), new(" "), new("bar"));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 		tag = new AddTriple(new("foo"), new("?r"), new("bar"));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 	}
 
@@ -59,12 +55,10 @@ public class AddTripleTests {
 	public void EvaluateWithInvalidObject() {
 		var test = new AimlTest();
 		var tag = new AddTriple(new("foo"), new("r"), new(" "));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 		tag = new AddTriple(new("foo"), new("r"), new("?bar"));
-		test.ExpectingWarning = true;
-		tag.Evaluate(test.RequestProcess);
+		test.AssertWarning(() => tag.Evaluate(test.RequestProcess));
 		Assert.IsEmpty(test.Bot.Triples);
 	}
 }

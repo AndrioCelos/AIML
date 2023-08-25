@@ -1,36 +1,24 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml;
-public class MediaElement(XmlElement element) : IMediaElement {
-	public XmlElement Element { get; } = element;
+public class MediaElement(XElement element) : IMediaElement {
+	public XElement Element { get; } = element;
 
-	internal static List<IMediaElement> ParseInlineElements(XmlElement element) {
+	internal static List<IMediaElement> ParseInlineElements(XElement element, Response response) {
 		var elements = new List<IMediaElement>();
-		var space = false;
 
-		foreach (XmlNode node in element.ChildNodes) {
-			switch (node.NodeType) {
-				case XmlNodeType.Whitespace:
-					if (space) break;
-					elements.Add(MediaText.Space);
-					space = true;
+		foreach (var node in element.Nodes()) {
+			switch (node) {
+				case XText textNode:
+					elements.Add(new MediaText(textNode.Value));
 					break;
-				case XmlNodeType.Text:
-				case XmlNodeType.CDATA:
-				case XmlNodeType.SignificantWhitespace:
-					var text = node.InnerText;
-					elements.Add(new MediaText(text));
-					space = text.Length > 0 && char.IsWhiteSpace(text[^1]);
-					break;
-				default:
-					if (node is XmlElement childElement && !childElement.Name.Equals("oob", StringComparison.OrdinalIgnoreCase)) {
-						if (AimlLoader.mediaElements.TryGetValue(childElement.Name, out var data)) {
-							if (data.type != MediaElementType.Inline) throw new AimlException($"<{childElement.Name}> element is not valid within <{element.Name}> element.");
-							elements.Add(data.parser(childElement));
-						} else {
-							// If we don't know what type of media childElement it is, treat it as an inline one.
-							elements.Add(new MediaElement(childElement));
-						}
+				case XElement childElement:
+					if (AimlLoader.mediaElements.TryGetValue(childElement.Name.LocalName, out var data)) {
+						if (data.type != MediaElementType.Inline) throw new AimlException($"{data.type} element <{childElement.Name.LocalName}> is not valid here", element);
+						elements.Add(data.parser(childElement, response));
+					} else {
+						// If we don't know what type of media childElement it is, treat it as an inline one.
+						elements.Add(new MediaElement(childElement));
 					}
 					break;
 			}

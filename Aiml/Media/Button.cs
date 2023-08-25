@@ -1,5 +1,5 @@
 ﻿using System.Text.RegularExpressions;
-using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>A block-level rich media element that presents a button that either links to a URL or sends a postback to the bot.</summary>
@@ -13,19 +13,19 @@ public class Button(string text, string? postback, string? url) : IMediaElement 
 	public string? Postback { get; } = postback;
 	public string? Url { get; } = url;
 
-	public static Button FromXml(XmlElement element) {
+	public static Button FromXml(XElement element, Response response) {
 		string? text = null, postback = null, url = null;
 		var hasPostback = false;
-		foreach (var childElement in element.ChildNodes.OfType<XmlElement>()) {
-			switch (childElement.Name.ToLowerInvariant()) {
-				case "text": text = childElement.InnerText; break;
-				case "postback": hasPostback = true; if (childElement.HasChildNodes) postback = childElement.InnerText; break;
-				case "url": url = childElement.InnerText; break;
+		foreach (var childElement in element.Elements()) {
+			switch (childElement.Name.LocalName.ToLowerInvariant()) {
+				case "text": text = childElement.Value; break;
+				case "postback": hasPostback = true; if (!childElement.IsEmpty) postback = childElement.Value; break;
+				case "url": url = childElement.Value; break;
 			}
 		}
-		if (hasPostback && url is not null) throw new AimlException("<button> element cannot have both postback and url attributes.");
+		if (hasPostback && url is not null) throw new AimlException("Cannot have both postback and url attributes", element);
 		if (text == null) {
-			text = string.Join(null, from XmlNode node in element.ChildNodes where node is XmlCharacterData and not XmlComment select node.Value);
+			text = string.Join(null, from node in element.Nodes().OfType<XText>() select node.Value);
 			text = Regex.Replace(text, @"\s+", " ");
 		}
 		return new(text, url is null ? (postback ?? text) : null, url);

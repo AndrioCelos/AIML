@@ -11,9 +11,10 @@ public class HistoryTests {
 
 	[Test]
 	public void Add() {
-		var subject = new History<string>(4);
-		subject.Add("Item 1");
-		subject.Add("Item 2");
+		var subject = new History<string>(4) {
+			"Item 1",
+			"Item 2"
+		};
 		Assert.AreEqual(2, subject.Count);
 		Assert.AreEqual("Item 2", subject[0]);
 		Assert.AreEqual("Item 1", subject[1]);
@@ -21,12 +22,13 @@ public class HistoryTests {
 
 	[Test]
 	public void Add_PastCapacity() {
-		var subject = new History<string>(4);
-		subject.Add("Item 1");
-		subject.Add("Item 2");
-		subject.Add("Item 3");
-		subject.Add("Item 4");
-		subject.Add("Item 5");
+		var subject = new History<string>(4) {
+			"Item 1",
+			"Item 2",
+			"Item 3",
+			"Item 4",
+			"Item 5"
+		};
 		Assert.AreEqual(4, subject.Count);
 		Assert.AreEqual("Item 5", subject[0]);
 		Assert.AreEqual("Item 2", subject[3]);

@@ -1,4 +1,5 @@
 ﻿using System.Xml;
+using System.Xml.Linq;
 using Aiml.Tags;
 using NUnit.Framework.Internal;
 
@@ -7,16 +8,13 @@ namespace Aiml.Tests.Tags;
 public class OobTests {
 	[Test]
 	public void Evaluate() {
-		var tag = new Oob("oob", null, new("<testoob>foo</testoob>"));
+		var tag = new Oob("oob", Enumerable.Empty<XAttribute>(), new("<testoob>foo</testoob>"));
 		Assert.AreEqual("<oob><testoob>foo</testoob></oob>", tag.Evaluate(new AimlTest().RequestProcess));
 	}
 
 	[Test]
 	public void FromXml() {
-		var test = new AimlTest();
-		var xmlDocument = new XmlDocument();
-		xmlDocument.LoadXml("<oob><testoob><input/></testoob></oob>");
-		var tag = Oob.FromXml(xmlDocument.DocumentElement!, test.Bot.AimlLoader);
+		var tag = Oob.FromXml(XElement.Parse("<oob><testoob><input/></testoob></oob>"), new AimlTest().Bot.AimlLoader);
 		Assert.AreEqual("oob", tag.Name);
 		Assert.IsEmpty(tag.Attributes);
 		Assert.IsInstanceOf<Oob>(tag.Children[0]);
@@ -25,17 +23,11 @@ public class OobTests {
 
 	[Test]
 	public void FromXmlWithRichMediaElement() {
-		var test = new AimlTest();
-		var xmlDocument = new XmlDocument();
-		xmlDocument.LoadXml("<card><title>Test</title></card>");
-		Oob.FromXml(xmlDocument.DocumentElement!, test.Bot.AimlLoader);
+		Oob.FromXml(XElement.Parse("<card><title>Test</title></card>"), new AimlTest().Bot.AimlLoader);
 	}
 
 	[Test]
 	public void FromXmlWithRichMediaElementAndInvalidAttributes() {
-		var test = new AimlTest();
-		var xmlDocument = new XmlDocument();
-		xmlDocument.LoadXml("<card><foo/></card>");
-		Assert.Throws<AimlException>(() => Oob.FromXml(xmlDocument.DocumentElement!, test.Bot.AimlLoader, "image", "title", "subtitle", "button"));
+		Assert.Throws<AimlException>(() => Oob.FromXml(XElement.Parse("<card><foo/></card>"), new AimlTest().Bot.AimlLoader, "image", "title", "subtitle", "button"));
 	}
 }

@@ -1,10 +1,9 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Tests.TestExtension;
-public class TestCustomTag(XmlElement element, XmlAttributeCollection attributes, TemplateElementCollection value1, TemplateElementCollection? value2) : TemplateNode
+public class TestCustomTag(XElement element, TemplateElementCollection value1, TemplateElementCollection? value2) : TemplateNode
 {
-    public XmlElement Element { get; } = element;
-    public XmlAttributeCollection Attributes { get; } = attributes;
+    public XElement Element { get; } = element;
     public TemplateElementCollection Value1 { get; } = value1;
     public TemplateElementCollection? Value2 { get; } = value2;
 

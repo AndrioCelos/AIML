@@ -1,4 +1,4 @@
-using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml.Tags;
 /// <summary>Sends the content to an external service and returns the response from the service.</summary>
@@ -23,9 +23,9 @@ namespace Aiml.Tags;
 ///		<para>This element is defined by the AIML 2.0 specification. This implementation is non-standard.</para>
 /// </remarks>
 /// <seealso cref="Srai"/>
-public sealed class SraiX(TemplateElementCollection service, TemplateElementCollection? @default, XmlAttributeCollection attributes, TemplateElementCollection children) : RecursiveTemplateTag(children) {
+public sealed class SraiX(TemplateElementCollection service, TemplateElementCollection? @default, XElement element, TemplateElementCollection children) : RecursiveTemplateTag(children) {
 	public TemplateElementCollection ServiceName { get; } = service;
-	public XmlAttributeCollection Attributes { get; } = attributes;
+	public XElement Element { get; } = element;
 	public TemplateElementCollection? DefaultReply { get; } = @default;
 
 	public override string Evaluate(RequestProcess process) {
@@ -34,7 +34,7 @@ public sealed class SraiX(TemplateElementCollection service, TemplateElementColl
 			if (AimlLoader.sraixServices.TryGetValue(serviceName, out var service)) {
 				var text = this.Children?.Evaluate(process) ?? "";
 				process.Log(LogLevel.Diagnostic, $"In element <sraix>: querying service '{serviceName}' to process text '{text}'.");
-				text = service.Process(text, this.Attributes, process);
+				text = service.Process(text, this.Element, process);
 				process.Log(LogLevel.Diagnostic, $"In element <sraix>: the request returned '{text}'.");
 				return text;
 			} else {

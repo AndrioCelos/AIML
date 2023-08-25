@@ -1,4 +1,4 @@
-using System.Xml;
+using System.Xml.Linq;
 
 namespace Aiml.Tags;
 /// <summary>Processes the content as AIML and adds it to the bot's brain, temporarily and for the current user only.</summary>
@@ -9,77 +9,81 @@ namespace Aiml.Tags;
 /// </remarks>
 /// <seealso cref="AddTriple"/><seealso cref="LearnF"/><seealso cref="Set"/>
 public sealed class Learn : TemplateNode {
-	public XmlElement XmlElement { get; }
+	public XElement Element { get; }
 
-	public Learn(XmlElement el) {
-		this.XmlElement = el;
+	public Learn(XElement el) {
+		this.Element = el;
 		ValidateLearnElement(el);
 	}
 
-	internal static void ValidateLearnElement(XmlElement el) {
+	internal static void ValidateLearnElement(XElement el) {
 		var hasCategory = false;
-		foreach (XmlNode childNode in el.ChildNodes) {
-			if (childNode.NodeType is XmlNodeType.Text or XmlNodeType.CDATA)
-				throw new AimlException($"Invalid node of type {childNode.NodeType} in <{el.Name}> element.");
-			else if (childNode is XmlElement el2) {
-				if (!el2.Name.Equals("category", StringComparison.OrdinalIgnoreCase))
-					throw new AimlException($"Invalid element <{el2.Name}> in <{el.Name}> element.");
-				hasCategory = true;
-				bool hasPattern = false, hasThat = false, hasTopic = false, hasTemplate = false;
-				foreach (XmlNode childNode2 in el2.ChildNodes) {
-					if (childNode2.NodeType is XmlNodeType.Text or XmlNodeType.CDATA)
-						throw new AimlException($"Invalid node of type {childNode.NodeType} in category of <{el.Name}> element.");
-					else if (childNode2 is XmlElement el3) {
-						switch (el3.Name.ToLowerInvariant()) {
-							case "pattern":
-								if (hasPattern) throw new AimlException($"Multiple <pattern> elements in category of <{el.Name}> element.");
-								hasPattern = true;
+		foreach (var childNode in el.Nodes()) {
+			switch (childNode) {
+				case XText:
+					throw new ArgumentException($"Invalid node of type {childNode.NodeType} in <{el.Name}> element.", nameof(el));
+				case XElement el2:
+					if (!el2.Name.LocalName.Equals("category", StringComparison.OrdinalIgnoreCase))
+						throw new ArgumentException($"Invalid element <{el2.Name}> in <{el.Name}> element.", nameof(el));
+					hasCategory = true;
+					bool hasPattern = false, hasThat = false, hasTopic = false, hasTemplate = false;
+					foreach (var childNode2 in el2.Nodes()) {
+						switch (childNode2) {
+							case XText:
+								throw new ArgumentException($"Invalid node of type {childNode.NodeType} in category of <{el.Name}> element.", nameof(el));
+							case XElement el3:
+								switch (el3.Name.LocalName.ToLowerInvariant()) {
+									case "pattern":
+										if (hasPattern) throw new ArgumentException($"Multiple <pattern> elements in category of <{el.Name}> element.", nameof(el));
+										hasPattern = true;
+										break;
+									case "that":
+										if (hasThat) throw new ArgumentException($"Multiple <that> elements in category of <{el.Name}> element.", nameof(el));
+										hasThat = true;
+										break;
+									case "topic":
+										if (hasTopic) throw new ArgumentException($"Multiple <topic> elements in category of <{el.Name}> element.", nameof(el));
+										hasTopic = true;
+										break;
+									case "template":
+										if (hasTemplate) throw new ArgumentException($"Multiple <template> elements in category of <{el.Name}> element.", nameof(el));
+										hasTemplate = true;
+										break;
+									default:
+										throw new ArgumentException($"Invalid element <{el3.Name}> in category of <{el.Name}> element.", nameof(el));
+								}
 								break;
-							case "that":
-								if (hasThat) throw new AimlException($"Multiple <that> elements in category of <{el.Name}> element.");
-								hasThat = true;
-								break;
-							case "topic":
-								if (hasTopic) throw new AimlException($"Multiple <topic> elements in category of <{el.Name}> element.");
-								hasTopic = true;
-								break;
-							case "template":
-								if (hasTemplate) throw new AimlException($"Multiple <template> elements in category of <{el.Name}> element.");
-								hasTemplate = true;
-								break;
-							default:
-								throw new AimlException($"Invalid element <{el3.Name}> in category of <{el.Name}> element.");
 						}
 					}
-				}
-				if (!hasPattern) throw new AimlException($"Missing <pattern> element in category of <{el.Name}> element.");
-				if (!hasTemplate) throw new AimlException($"Missing <template> element in category of <{el.Name}> element.");
+					if (!hasPattern) throw new ArgumentException($"Missing <pattern> element in category of <{el.Name}> element.", nameof(el));
+					if (!hasTemplate) throw new ArgumentException($"Missing <template> element in category of <{el.Name}> element.", nameof(el));
+					break;
 			}
 		}
-		if (!hasCategory) throw new AimlException($"Empty <{el.Name}> element.");
+		if (!hasCategory) throw new ArgumentException($"Empty <{el.Name}> element.", nameof(el));
 	}
 
 	public override string Evaluate(RequestProcess process) {
 		// Evaluate <eval> tags.
-		var el = (XmlElement) this.XmlElement.Clone();
+		var el = new XElement(this.Element);
 		ProcessXml(el, process);
 
 		// Learn the result.
-		process.Log(LogLevel.Diagnostic, $"In element <learn>: learning new category for {process.User.ID}: {el.OuterXml}");
-		var loader = new AimlLoader(process.Bot);
-		foreach (var el2 in el.ChildNodes.OfType<XmlElement>())
-			loader.ProcessCategory(process.User.Graphmaster, el2, null);
+		process.Log(LogLevel.Diagnostic, $"In element <learn>: learning new category for {process.User.ID}");
+		process.Bot.AimlLoader.ForwardCompatible = false;
+		process.Bot.AimlLoader.LoadAimlInto(process.User.Graphmaster, el);
 
 		return string.Empty;
 	}
 
-	internal static void ProcessXml(XmlElement el, RequestProcess process) {
-		for (var i = 0; i < el.ChildNodes.Count; ++i) {
-			var childNode = el.ChildNodes[i];
-			if (childNode is XmlElement childElement) {
-				if (childNode.Name.Equals("eval", StringComparison.OrdinalIgnoreCase)) {
+	internal static void ProcessXml(XElement el, RequestProcess process) {
+		for (var childNode = el.FirstNode; childNode is not null; childNode = childNode.NextNode) {
+			if (childNode is XElement childElement) {
+				if (childElement.Name.LocalName.Equals("eval", StringComparison.OrdinalIgnoreCase)) {
 					var tags = TemplateElementCollection.FromXml(childElement, process.Bot.AimlLoader!);
-					el.ReplaceChild(el.OwnerDocument.CreateTextNode(tags.Evaluate(process)), childElement);
+					var newElement = new XText(tags.Evaluate(process));
+					childNode.ReplaceWith(newElement);
+					childNode = newElement;
 				} else
 					ProcessXml(childElement, process);
 			}

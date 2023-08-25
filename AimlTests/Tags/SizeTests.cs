@@ -1,4 +1,5 @@
-﻿using Aiml.Tags;
+﻿using System.Xml.Linq;
+using Aiml.Tags;
 
 namespace Aiml.Tests.Tags;
 [TestFixture]
@@ -6,14 +7,14 @@ public class SizeTests {
 	[Test]
 	public void Evaluate() {
 		var test = new AimlTest();
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>SAMPLE CATEGORY</pattern>
 		<template></template>
 	</category>
 </aiml>"));
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>*</pattern>

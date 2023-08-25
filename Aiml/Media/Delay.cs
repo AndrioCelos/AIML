@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>A separator rich media element that introduces a delay between messages.</summary>
@@ -11,5 +11,5 @@ namespace Aiml.Media;
 public class Delay(TimeSpan duration) : IMediaElement {
 	public TimeSpan Duration { get; } = duration;
 
-	public static Delay FromXml(XmlElement element) => new(TimeSpan.FromSeconds(double.TryParse(element.InnerText, out var d) && d >= 0 ? d : throw new AimlException("Invalid duration in <delay> element.")));
+	public static Delay FromXml(XElement element, Response response) => new(TimeSpan.FromSeconds(double.TryParse(element.Value, out var d) && d >= 0 ? d : throw new AimlException("Invalid duration", element)));
 }

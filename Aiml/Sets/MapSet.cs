@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace Aiml.Sets;
+﻿namespace Aiml.Sets;
 /// <summary>Represents the set of phrases that are keys in an AIML map.</summary>
 public class MapSet : Set {
 	public Map Map { get; }

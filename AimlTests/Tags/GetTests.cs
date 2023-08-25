@@ -29,7 +29,7 @@ public class GetTests {
 
 	[Test]
 	public void ParseWithTupleName() {
-		Assert.Throws<AimlException>(() => new Get(name: new("baz"), var: null, tuple: new("tuple")));
+		Assert.Throws<ArgumentException>(() => new Get(name: new("baz"), var: null, tuple: new("tuple")));
 	}
 
 	[Test]
@@ -41,12 +41,12 @@ public class GetTests {
 
 	[Test]
 	public void ParseWithNameAndVar() {
-		Assert.Throws<AimlException>(() => new Get(name: new("foo"), var: new("bar"), tuple: null));
+		Assert.Throws<ArgumentException>(() => new Get(name: new("foo"), var: new("bar"), tuple: null));
 	}
 
 	[Test]
 	public void ParseWithNoAttributes() {
-		Assert.Throws<AimlException>(() => new Get(name: null, var: null, tuple: null));
+		Assert.Throws<ArgumentException>(() => new Get(name: null, var: null, tuple: null));
 	}
 
 	[Test]
@@ -57,8 +57,6 @@ public class GetTests {
 
 	[Test]
 	public void EvaluateWithUnboundPredicateWithDefault() {
-		var test = new AimlTest();
-
 		var tag = new Get(new("bar"), null, false);
 		Assert.AreEqual("sample default", tag.Evaluate(GetTest().RequestProcess));
 	}

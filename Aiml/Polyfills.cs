@@ -1,6 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace Aiml;
+﻿namespace Aiml;
 internal static class Polyfills {
 #if !(NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
 	public static bool TryAdd<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, TValue value) {

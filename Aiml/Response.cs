@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using System.Text;
 using System.Xml;
 using Aiml.Media;
+using System.Xml.Linq;
 
 namespace Aiml;
 public class Response(Request request, string text) {
@@ -18,16 +19,13 @@ public class Response(Request request, string text) {
 			this.Bot.Log(LogLevel.Warning, "Cannot process nested <oob> elements.");
 			return m.Value;
 		}
-		var xmlDocument = new XmlDocument();
+		var element = XElement.Parse(m.Value);
 		var builder = new StringBuilder();
-		xmlDocument.LoadXml(m.Value);
-		foreach (var childElement in xmlDocument.DocumentElement!.ChildNodes.OfType<XmlElement>()) {
-			if (AimlLoader.oobHandlers.TryGetValue(childElement.Name, out var handler))
+		foreach (var childElement in element.Elements()) {
+			if (AimlLoader.oobHandlers.TryGetValue(childElement.Name.LocalName, out var handler))
 				builder.Append(handler(childElement));
-			else {
+			else
 				this.Bot.Log(LogLevel.Warning, $"No handler found for <oob> element <{childElement.Name}>.");
-				builder.Append(childElement.OuterXml);
-			}
 		}
 		return builder.ToString();
 	});
@@ -43,54 +41,51 @@ public class Response(Request request, string text) {
 
 	/// <summary>Parses rich media elements in this response and converts it to a list of <see cref="Message"/> instances</summary>
 	public Message[] ToMessages() {
-		var xmlDocument = new XmlDocument();
-		xmlDocument.LoadXml($"<response>{this}</response>");
+		try {
+			var element = XElement.Parse($"<response>{this}</response>");
 
-		var messages = new List<Message>();
-		(List<IMediaElement> inlineElements, List<IMediaElement> blockElements)? currentMessage = null;
-		var space = false;
+			var messages = new List<Message>();
+			(List<IMediaElement> inlineElements, List<IMediaElement> blockElements)? currentMessage = null;
 
-		foreach (XmlNode node in xmlDocument.DocumentElement!.ChildNodes) {
-			switch (node.NodeType) {
-				case XmlNodeType.Whitespace:
-					if (space || currentMessage == null) break;
-					currentMessage.Value.inlineElements.Add(MediaText.Space);
-					space = true;
-					break;
-				case XmlNodeType.Text:
-				case XmlNodeType.CDATA:
-				case XmlNodeType.SignificantWhitespace:
-					var text = node.InnerText;
-					currentMessage ??= new(new(), new());
-					currentMessage.Value.inlineElements.Add(new MediaText(text));
-					space = text.Length > 0 && char.IsWhiteSpace(text[^1]);
-					break;
-				default:
-					if (node is XmlElement element) {
-						if (AimlLoader.mediaElements.TryGetValue(element.Name, out var data)) {
-							if (data.type == MediaElementType.Separator) {
-								if (currentMessage is not null)
-									messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), data.parser(element)));
-								currentMessage = (new(), new());
-							} else if (data.type == MediaElementType.Block) {
-								currentMessage ??= new(new(), new());
-								currentMessage.Value.blockElements.Add(data.parser(element));
+			foreach (var node in element.Nodes()) {
+				switch (node) {
+					case XText textNode:
+						var text = textNode.Value;
+						currentMessage ??= new(new(), new());
+						currentMessage.Value.inlineElements.Add(new MediaText(text));
+						break;
+					case XElement childElement:
+						try {
+							if (AimlLoader.mediaElements.TryGetValue(childElement.Name.LocalName, out var data)) {
+								if (data.type == MediaElementType.Separator) {
+									if (currentMessage is not null)
+										messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), data.parser(childElement, this)));
+									currentMessage = (new(), new());
+								} else if (data.type == MediaElementType.Block) {
+									currentMessage ??= new(new(), new());
+									currentMessage.Value.blockElements.Add(data.parser(childElement, this));
+								} else {
+									currentMessage ??= new(new(), new());
+									currentMessage.Value.inlineElements.Add(data.parser(childElement, this));
+								}
 							} else {
+								// If we don't know what type of media element it is, treat it as an inline one.
 								currentMessage ??= new(new(), new());
-								currentMessage.Value.inlineElements.Add(data.parser(element));
+								currentMessage.Value.inlineElements.Add(new MediaElement(element));
 							}
-						} else {
-							// If we don't know what type of media element it is, treat it as an inline one.
-							currentMessage ??= new(new(), new());
-							currentMessage.Value.inlineElements.Add(new MediaElement(element));
+						} catch (ArgumentException ex) {
+							this.Bot.Log(LogLevel.Warning, $"Invalid <{childElement.Name.LocalName}> media element in response: {ex.Message}");
 						}
-					}
-					break;
+						break;
+				}
 			}
+			if (currentMessage is not null)
+				messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), null));
+			return messages.ToArray();
+		} catch (XmlException ex) {
+			this.Bot.Log(LogLevel.Warning, $"Failed to parse response media elements: {ex.Message}");
+			return new Message[] { new(new[] { new MediaText(this.Text) }, Array.Empty<IMediaElement>(), null) };
 		}
-		if (currentMessage is not null)
-			messages.Add(new(currentMessage.Value.inlineElements.ToArray(), currentMessage.Value.blockElements.ToArray(), null));
-		return messages.ToArray();
 	}
 
 	/// <summary>Returns the response text, with rich media elements in raw XML. Messages are separated with newlines.</summary>

@@ -54,7 +54,7 @@ public sealed class Date : TemplateNode {
 		this.Locale = locale;
 		this.Timezone = timezone;
 		if ((format is not null && (jformat is not null || nformat is not null)) || (jformat is not null && nformat is not null))
-			throw new AimlException("<date> element cannot have multiple format attributes.");
+			throw new ArgumentException("<date> element cannot have multiple format attributes.");
 	}
 
 	public override string Evaluate(RequestProcess process) {

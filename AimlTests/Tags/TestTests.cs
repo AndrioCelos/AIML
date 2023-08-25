@@ -1,4 +1,5 @@
-﻿using Aiml.Tags;
+﻿using System.Xml.Linq;
+using Aiml.Tags;
 
 namespace Aiml.Tests.Tags;
 [TestFixture]
@@ -6,7 +7,7 @@ public class TestTests {
 	// Testing the <test>s among the tests.
 	private static AimlTest GetTest() {
 		var test = new AimlTest();
-		test.Bot.AimlLoader.LoadAIML(AimlTest.ParseXmlDocument(@"
+		test.Bot.AimlLoader.LoadAiml(XElement.Parse(@"
 <aiml>
 	<category>
 		<pattern>*</pattern>
@@ -36,17 +37,17 @@ public class TestTests {
 
 	[Test]
 	public void ParseWithConstantAndRegex() {
-		Assert.Throws<AimlException>(() => new Test(name: new("SampleTest"), expected: new("Hello world"), regex: new("^Hello"), children: new("Hello world")));
+		Assert.Throws<ArgumentException>(() => new Test(name: new("SampleTest"), expected: new("Hello world"), regex: new("^Hello"), children: new("Hello world")));
 	}
 
 	[Test]
 	public void ParseWithoutExpectation() {
-		Assert.Throws<AimlException>(() => new Test(name: new("SampleTest"), expected: null, regex: null, children: new("Hello world")));
+		Assert.Throws<ArgumentException>(() => new Test(name: new("SampleTest"), expected: null, regex: null, children: new("Hello world")));
 	}
 
 	[Test]
 	public void ParseWithNonConstantName() {
-		Assert.Throws<AimlException>(() => new Test(name: new(new Star(null)), expected: new("Hello world"), regex: null, children: new("Hello world")));
+		Assert.Throws<ArgumentException>(() => new Test(name: new(new Star(null)), expected: new("Hello world"), regex: null, children: new("Hello world")));
 	}
 
 	[Test]

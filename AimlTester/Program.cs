@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 
 namespace AimlTester;
 internal class Program {
@@ -88,7 +87,7 @@ internal class Program {
 			Console.WriteLine($"{tests.Count} tests found.");
 
 		foreach (var (path, template) in categories) {
-			Console.WriteLine($"Running test template in file '{template.FileName}' with path '{path}'...");
+			Console.WriteLine($"Running test template in {template.Uri} line {template.LineNumber} with path '{path}'...");
 
 			var pos = path.IndexOf(" <that> ");
 			var input = path[..pos];

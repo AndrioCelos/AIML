@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Aiml;
 /// <summary>Represents a node in the AIML category tree.</summary>
@@ -23,25 +23,43 @@ public class PatternNode {
 		this.Template = template;
 	}
 
-	public void AddChild(IEnumerable<PathToken> path, Template template) {
+	public void AddChild(IEnumerable<PathToken> path, Template template)
+		=> this.AddChild(path, template, out _);
+	public void AddChild(IEnumerable<PathToken> path, Template template, out Template? existingTemplate) {
 		var node = this;
 		foreach (var token in path ?? throw new ArgumentNullException(nameof(path))) {
 			node = node.GetOrAddChild(token);
 		}
-		node.Template = template ?? throw new ArgumentNullException(nameof(template));
+		existingTemplate = node.Template;
+		node.Template ??= template ?? throw new ArgumentNullException(nameof(template));
 	}
 
-	public bool TryGetChild(PathToken token, out PatternNode? node) {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+	public bool TryGetChild(PathToken token, [MaybeNullWhen(false)] out PatternNode node) {
+#else
+	public bool TryGetChild(PathToken token, out PatternNode node) {
+#endif
 		if (token.IsSet) {
 			var child = this.SetChildren.FirstOrDefault(c => c.SetName == token.Text);
 			if (child == null) {
-				node = null;
+				node = null!;
 				return false;
 			}
 			node = child.Node;
 			return true;
 		} else
 			return this.Children.TryGetValue(token.Text, out node);
+	}
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+	public bool TryGetChild(IEnumerable<PathToken> path, [MaybeNullWhen(false)] out PatternNode node) {
+#else
+	public bool TryGetChild(IEnumerable<PathToken> path, out PatternNode node) {
+#endif
+		node = this;
+		foreach (var token in path ?? throw new ArgumentNullException(nameof(path))) {
+			if (!node.TryGetChild(token, out node)) return false;
+		}
+		return true;
 	}
 
 	public PatternNode GetOrAddChild(PathToken token) {
@@ -64,7 +82,7 @@ public class PatternNode {
 
 	public Template? Search(RequestSentence sentence, RequestProcess process, string that, bool traceSearch) {
 		if (process.RecursionDepth > sentence.Bot.Config.RecursionLimit) {
-			sentence.Bot.Log(LogLevel.Warning, "Recursion limit exceeded. User: " + sentence.Request.User.ID + "; raw input: \"" + sentence.Request.Text + "\"");
+			sentence.Bot.Log(LogLevel.Warning, $"Recursion limit exceeded. User: {sentence.Request.User.ID}; raw input: \"{sentence.Request.Text}\"");
 			throw new RecursionLimitException();
 		}
 
@@ -82,19 +100,24 @@ public class PatternNode {
 		i += thatSplit.Length;
 		inputPath[i++] = "<topic>";
 		topicSplit.CopyTo(inputPath, i);
-		if (traceSearch) process.Log(LogLevel.Diagnostic, "Normalized path: " + string.Join(" ", inputPath));
+		if (traceSearch)
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+			process.Log(LogLevel.Diagnostic, $"Normalized path: {string.Join(' ', inputPath)}");
+#else
+			process.Log(LogLevel.Diagnostic, $"Normalized path: {string.Join(" ", inputPath)}");
+#endif
 
 		var result = this.Search(sentence, process, inputPath, 0, traceSearch, MatchState.Message);
 		return result;
 	}
 	private Template? Search(RequestSentence sentence, RequestProcess process, string[] inputPath, int inputPathIndex, bool traceSearch, MatchState matchState) {
 		if (traceSearch)
-			sentence.Bot.Log(LogLevel.Diagnostic, "Search: " + process.Path);
+			sentence.Bot.Log(LogLevel.Diagnostic, $"Search: {process.Path}");
 
 		var pathDepth = process.patternPathTokens.Count;
 
 		if (process.CheckTimeout()) {
-			sentence.Bot.Log(LogLevel.Warning, "Request timeout. User: " + sentence.Request.User.ID + "; raw input: \"" + sentence.Request.Text + "\"");
+			sentence.Bot.Log(LogLevel.Warning, $"Request timeout. User: {sentence.Request.User.ID}; raw input: \"{sentence.Request.Text}\"");
 			throw new TimeoutException();
 		}
 

@@ -1,5 +1,4 @@
 ﻿using Aiml.Tags;
-using NUnit.Framework.Constraints;
 
 namespace Aiml.Tests.Tags;
 [TestFixture]
@@ -119,7 +118,7 @@ public class ConditionTests {
 
 	[Test]
 	public void ParseWithLiAfterDefault() {
-		Assert.Throws<AimlException>(() => new Condition(name: null, var: null, value: null, items: new Condition.Li[] {
+		Assert.Throws<ArgumentException>(() => new Condition(name: null, var: null, value: null, items: new Condition.Li[] {
 			new(new("match 2")),
 			new(name: new("baz"), var: null, value: new("value 1"), children: new("match 1"))
 		}, children: TemplateElementCollection.Empty));
@@ -127,27 +126,27 @@ public class ConditionTests {
 
 	[Test]
 	public void ParseWithNameAndVar() {
-		Assert.Throws<AimlException>(() => new Condition(name: new("foo"), var: new("bar"), value: new("value 1"), items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
+		Assert.Throws<ArgumentException>(() => new Condition(name: new("foo"), var: new("bar"), value: new("value 1"), items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
 	}
 
 	[Test]
 	public void ParseLiWithNameAndVar() {
-		Assert.Throws<AimlException>(() => new Condition.Li(name: new("foo"), var: new("bar"), value: new("value 1"), children: TemplateElementCollection.Empty));
+		Assert.Throws<ArgumentException>(() => new Condition.Li(name: new("foo"), var: new("bar"), value: new("value 1"), children: TemplateElementCollection.Empty));
 	}
 
 	[Test]
 	public void ParseType1WithNoVariable() {
-		Assert.Throws<AimlException>(() => new Condition(name: null, var: null, value: new("value 1"), items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
+		Assert.Throws<ArgumentException>(() => new Condition(name: null, var: null, value: new("value 1"), items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
 	}
 
 	[Test]
 	public void ParseType1WithNoValue() {
-		Assert.Throws<AimlException>(() => new Condition(name: new("foo"), var: null, value: null, items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
+		Assert.Throws<ArgumentException>(() => new Condition(name: new("foo"), var: null, value: null, items: Array.Empty<Condition.Li>(), children: TemplateElementCollection.Empty));
 	}
 
 	[Test]
 	public void ParseType3WithNoValue() {
-		Assert.Throws<AimlException>(() => new Condition(name: null, var: null, value: null, items: new Condition.Li[] {
+		Assert.Throws<ArgumentException>(() => new Condition(name: null, var: null, value: null, items: new Condition.Li[] {
 			new(name: new("foo"), var: null, value: null, children: TemplateElementCollection.Empty)
 		}, children: TemplateElementCollection.Empty));
 	}

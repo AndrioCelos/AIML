@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Xml;
 using Aiml.Maps;
 using Aiml.Sets;
 
@@ -300,19 +299,19 @@ public class Bot {
 				var template = request.User.Graphmaster.Search(sentence, process, that, trace);
 				if (template != null) {
 					process.template = template;
-					process.Log(LogLevel.Diagnostic, "Input matched user-specific category '" + process.Path + "'.");
+					process.Log(LogLevel.Diagnostic, $"Input matched user-specific category '{process.Path}'.");
 				} else {
 					template = this.Graphmaster.Search(sentence, process, that, trace);
 					if (template != null) {
 						process.template = template;
-						process.Log(LogLevel.Diagnostic, "Input matched category '" + process.Path + "' in file '" + Path.GetFileName(template.FileName) + "'.");
+						process.Log(LogLevel.Diagnostic, $"Input matched category '{process.Path}' in {template.Uri} line {template.LineNumber}.");
 					}
 				}
 
 				if (template != null) {
 					output = template.Content.Evaluate(process);
 				} else {
-					process.Log(LogLevel.Warning, "No match for input '" + sentence.Text + "'.");
+					process.Log(LogLevel.Warning, $"No match for input '{sentence.Text}'.");
 					output = this.Config.DefaultResponse;
 				}
 			} catch (TimeoutException) {

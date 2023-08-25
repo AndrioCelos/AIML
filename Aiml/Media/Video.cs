@@ -1,4 +1,4 @@
-﻿using System.Xml;
+﻿using System.Xml.Linq;
 
 namespace Aiml.Media;
 /// <summary>A block-level rich media element that links to a video.</summary>
@@ -7,5 +7,5 @@ namespace Aiml.Media;
 public class Video(string url) : IMediaElement {
 	public string Url { get; } = url;
 
-	public static Video FromXml(XmlElement element) => new(element.InnerText);
+	public static Video FromXml(XElement element, Response response) => new(element.Value);
 }
