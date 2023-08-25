@@ -37,8 +37,10 @@ public sealed class Oob(string name, string attributes, TemplateElementCollectio
 					if (Array.IndexOf(childTags, childElement.Name) >= 0) {
 						children.Add(FromXml(childElement, loader, childElement.Name.Equals("card", StringComparison.InvariantCultureIgnoreCase) ? new[] { "title", "subtitle", "image", "button" } :
 							childElement.Name.Equals("button", StringComparison.InvariantCultureIgnoreCase) ? new[] { "text", "postback", "url" } : Array.Empty<string>()));
-					} else
+					} else if (childTags.Length == 0)
 						children.Add(loader.ParseElement(childElement));
+					else
+						throw new AimlException($"<{childElement.Name}> is not a valid child of <{el.Name}>.");
 				}
 			}
 			loader.ForwardCompatible = oldFC;
