@@ -100,33 +100,18 @@ public class PatternNode {
 
 		bool tokensRemaining;
 		if (inputPathIndex >= inputPath.Length) {
-			// No tokens remaining in the input path. If this node has a template, return success. 
+			// No tokens remaining in the input path. If this node has a template, return success.
 			if (this.Template != null) return this.Template;
 			// Otherwise, look for zero+ wildcards.
 			tokensRemaining = false;
-		} else {
+		} else
 			tokensRemaining = true;
-
-			switch (matchState) {
-				case MatchState.Message:
-					if (inputPath[inputPathIndex] == "<that>") matchState = MatchState.That;
-					break;
-				case MatchState.That:
-					if (inputPath[inputPathIndex] == "<topic>") matchState = MatchState.Topic;
-					break;
-			}
-		}
 
 		// Reserve a space in the pattern path list here. This is so that further recursive calls will leave it alone.
 		// If we find a template, we replace the placeholder with the correct token.
 		process.patternPathTokens.Add("?");
 
-		//var star = matchState == MatchState.That ? subRequest.thatstar :
-		//	matchState == MatchState.Topic ? subRequest.topicstar :
-		//	subRequest.star;
-
 		// Search for child nodes that match the input in priority order.
-
 		// Priority exact match.
 		if (tokensRemaining && this.children.TryGetValue("$" + inputPath[inputPathIndex], out var node)) {
 			process.patternPathTokens[pathDepth] = "$" + inputPath[inputPathIndex];
@@ -150,6 +135,15 @@ public class PatternNode {
 
 		// Exact match.
 		if (tokensRemaining && this.children.TryGetValue(inputPath[inputPathIndex], out node)) {
+			// matchState must only be advanced now so that wildcards capturing zero words works correctly.
+			switch (matchState) {
+				case MatchState.Message:
+					if (inputPath[inputPathIndex] == "<that>") matchState = MatchState.That;
+					break;
+				case MatchState.That:
+					if (inputPath[inputPathIndex] == "<topic>") matchState = MatchState.Topic;
+					break;
+			}
 			process.patternPathTokens[pathDepth] = inputPath[inputPathIndex];
 			var result = node.Search(sentence, process, inputPath, inputPathIndex + 1, traceSearch, matchState);
 			if (result != null) return result;
@@ -159,41 +153,44 @@ public class PatternNode {
 		if (tokensRemaining) {
 			foreach (var child in this.setChildren) {
 				process.patternPathTokens[pathDepth] = $"<set>{child.SetName}</set>";
-				if (sentence.Bot.Sets.TryGetValue(child.SetName, out var set)) {
-					var star = process.GetStarList(matchState);
-					var starIndex = star.Count;
-					star.Add("");  // Reserving a space; see above.
-
-					// Similarly to a wildcard search, we take words one by one until either a template is found, or no words remain.
-					// This time, each time we take a word, we must check that the phrase is in the set.
-					var phrase = new StringBuilder(); var wordCount = 0;
-					for (var inputPathIndex2 = inputPathIndex; inputPathIndex2 < inputPath.Length; ++inputPathIndex2) {
-						if ((matchState == MatchState.Message && inputPath[inputPathIndex2] == "<that>") || 
-							(matchState == MatchState.That && inputPath[inputPathIndex2] == "<topic>")) break;
-
-						if (phrase.Length > 0) phrase.Append(' ');
-						phrase.Append(inputPath[inputPathIndex2]);
-						++wordCount;
-
-						if (set.Contains(phrase.ToString())) {
-							// Phrase found in the set. Now continue with the tree search.
-							var result = child.Node.Search(sentence, process, inputPath, inputPathIndex + wordCount, traceSearch, matchState);
-							if (result != null) {
-								star[starIndex] = phrase.ToString();
-								return result;
-							}
-						}
-
-						// Each set keeps track of the greatest number of words any element in the set has.
-						// After reaching that number, we can stop searching.
-						if (wordCount >= set.MaxWords) break;
-					}
-
-					// No match; release the reserved space.
-					star.RemoveAt(starIndex);
-					Debug.Assert(star.Count == starIndex);
-				} else
+				if (!sentence.Bot.Sets.TryGetValue(child.SetName, out var set)) {
 					sentence.Request.Bot.Log(LogLevel.Warning, $"Reference to a missing set in pattern path '{string.Join(" ", process.patternPathTokens)}'.");
+					continue;
+				}
+				var star = process.GetStarList(matchState);
+				var starIndex = star.Count;
+				star.Add("");  // Reserving a space; see above.
+
+				// Find the maximum number of words that this can match.
+				int endIndex = inputPathIndex;
+				for (var i = inputPathIndex + 1; i < inputPath.Length; i++) {
+					if (i - inputPathIndex > set.MaxWords
+						|| (matchState == MatchState.Message && inputPath[i - 1] == "<that>")
+						|| (matchState == MatchState.That && inputPath[i - 1] == "<topic>"))
+						break;
+					endIndex = i;
+				}
+
+				// Set tags work similarly to wildcards, but are greedy.
+				for (; endIndex >= inputPathIndex; endIndex--) {
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+					var phrase = string.Join(' ', inputPath, inputPathIndex, endIndex - inputPathIndex);
+#else
+					var phrase = string.Join(" ", inputPath, inputPathIndex, endIndex - inputPathIndex);
+#endif
+					if (set.Contains(phrase)) {
+						// Phrase found in the set. Now continue with the tree search.
+						var result = child.Node.Search(sentence, process, inputPath, endIndex, traceSearch, matchState);
+						if (result != null) {
+							star[starIndex] = phrase;
+							return result;
+						}
+					}
+				}
+
+				// No match; release the reserved space.
+				star.RemoveAt(starIndex);
+				Debug.Assert(star.Count == starIndex);
 			}
 		}
 
@@ -229,7 +226,13 @@ public class PatternNode {
 		for (inputPathIndex2 = inputPathIndex + minimumWords; inputPathIndex2 <= inputPath.Length; ++inputPathIndex2) {
 			var result = this.Search(subRequest, process, inputPath, inputPathIndex2, traceSearch, matchState);
 			if (result != null) {
-				star[starIndex] = string.Join(" ", inputPath, inputPathIndex, inputPathIndex2 - inputPathIndex);
+				star[starIndex] = inputPathIndex2 == inputPathIndex
+					? process.Bot.Config.DefaultWildcard
+#if NETSTANDARD2_1_OR_GREATER || NETCOREAPP2_0_OR_GREATER
+					: string.Join(' ', inputPath, inputPathIndex, inputPathIndex2 - inputPathIndex);
+#else
+					: string.Join(" ", inputPath, inputPathIndex, inputPathIndex2 - inputPathIndex);
+#endif
 				return result;
 			}
 
