@@ -5,9 +5,9 @@ public sealed class Explode(TemplateElementCollection children) : RecursiveTempl
 	public override string Evaluate(RequestProcess process) {
 		var value = this.EvaluateChildren(process);
 #if NET5_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-		return string.Join(' ', value.Where(c => !char.IsWhiteSpace(c)));
+		return string.Join(' ', value.Where(char.IsLetterOrDigit));
 #else
-		return string.Join(" ", value.Where(c => !char.IsWhiteSpace(c)));
+		return string.Join(" ", value.Where(char.IsLetterOrDigit));
 #endif
 	}
 }
