@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace Aiml.Tags;
@@ -15,7 +16,7 @@ namespace Aiml.Tags;
 ///			<item>
 ///				<term><c>jformat</c></term>
 ///				<description>the format of the <c>from</c> and <c>to</c> attributes using a Java Simple Date Format format string.
-///					See <see href="https://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html"/> for more information.
+///					See <see href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/text/SimpleDateFormat.html"/> for more information.
 ///					If omitted, .NET will attempt to infer the format.</description>
 ///			</item>
 ///			<item>
@@ -27,6 +28,7 @@ namespace Aiml.Tags;
 ///				<description>the end date of the interval.</description>
 ///			</item>
 ///		</list>
+///		<para>Daylight saving time and leap seconds are ignored.</para>
 ///		<para>This element has no content.</para>
 ///		<para>This element is defined by the AIML 2.0 specification.</para>
 /// </remarks>
@@ -38,66 +40,68 @@ public sealed class Interval(TemplateElementCollection? jformat, TemplateElement
 	public TemplateElementCollection Style { get; set; } = style;
 
 	public override string Evaluate(RequestProcess process) {
-		string? format = null;
-		DateTime start; DateTime end;
-		string startString, endString;
 		var jformat = this.JFormat?.Evaluate(process);
 
 		// Parse the dates.
-		startString = this.Start.Evaluate(process);
-		try {
-			if (jformat == null) {
-				start = DateTime.Parse(startString);
-			} else {
-				format = ConvertJavaFormat(jformat);
-				start = DateTime.ParseExact(startString, jformat, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal);
-			}
-		} catch (FormatException) {
-			if (format == null) process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + startString + "' as a date.");
-			else process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + startString + "' as a date with format '" + jformat + "'.");
+		if (!TryParseDate(process, this.Start.Evaluate(process), jformat, out var start)
+			|| !TryParseDate(process, this.End.Evaluate(process), jformat, out var end))
 			return "unknown";
-		}
-
-		endString = this.End.Evaluate(process);
-		try {
-			if (jformat == null) {
-				end = DateTime.Parse(endString);
-			} else {
-				format = ConvertJavaFormat(jformat);
-				end = DateTime.ParseExact(endString, jformat, CultureInfo.CurrentCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal);
-			}
-		} catch (FormatException) {
-			if (format != null) process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date with format '" + jformat + "'.");
-			else process.Log(LogLevel.Warning, "In element <interval>: Could not parse '" + endString + "' as a date.");
-			return "unknown";
-		}
 
 		// Output the result.
 		var unit = this.Style.Evaluate(process);
 		switch (unit) {
-			case "milliseconds": return ((int) (end - start).TotalMilliseconds).ToString();
-			case "seconds"     : return ((int) (end - start).TotalSeconds).ToString();
-			case "minutes"     : return ((int) (end - start).TotalMinutes).ToString();
-			case "hours"       : return ((int) (end - start).TotalHours).ToString();
-			case "days"        : return ((int) (end - start).TotalDays).ToString();
-			case "weeks"       : return ((int) (end - start).TotalDays / 7).ToString();
-			case "months"      :
+			case "milliseconds": return ((long) (end - start).TotalMilliseconds).ToString();
+			case "seconds"     : return ((long) (end - start).TotalSeconds).ToString();
+			case "minutes"     : return ((long) (end - start).TotalMinutes).ToString();
+			case "hours"       : return ((long) (end - start).TotalHours).ToString();
+			case "days"        : return ((long) (end - start).TotalDays).ToString();
+			case "weeks"       : return ((long) (end - start).TotalDays / 7).ToString();
+			case "months"      : {
 				var interval = (end.Year - start.Year) * 12 + end.Month - start.Month;
-				if (end - new DateTime(end.Year, end.Month, 1, 0, 0, 0, end.Kind) <
-					start - new DateTime(start.Year, start.Month, 1, 0, 0, 0, start.Kind))
-					// end falls earlier in the month than start.
-					--interval;
+				if (end >= start) {
+					if (IsEndEarlierInMonth(start.DateTime, end.ToOffset(start.Offset).DateTime)) interval--;
+				} else {
+					if (IsEndEarlierInMonth(end.DateTime, start.ToOffset(end.Offset).DateTime)) interval++;
+				}
 				return interval.ToString();
-			case "years"       :
-				interval = end.Year - start.Year;
-				if (end - new DateTime(end.Year, 1, 1, 0, 0, 0, end.Kind) <
-					start - new DateTime(start.Year, 1, 1, 0, 0, 0, start.Kind))
-					// end falls earlier in the year than start.
-					--interval;
+			}
+			case "years"       : {
+				var interval = end.Year - start.Year;
+				if (end >= start) {
+					if (IsEndEarlierInYear(start.DateTime, end.ToOffset(start.Offset).DateTime)) interval--;
+				} else {
+					if (IsEndEarlierInYear(end.DateTime, start.ToOffset(end.Offset).DateTime)) interval++;
+				}
 				return interval.ToString();
+			}
 			default:
-				process.Log(LogLevel.Warning, "In element <interval>: The style parameter evaluated to an invalid unit: " + unit);
+				process.Log(LogLevel.Warning, $"In element <interval>: 'style' attribute was invalid: {unit}");
 				return "unknown";
+		}
+	}
+
+	private static bool IsEndEarlierInMonth(DateTime start, DateTime end)
+		=> end.Day < start.Day || (end.Day == start.Day && (end.Ticks % TimeSpan.TicksPerDay) < (start.Ticks % TimeSpan.TicksPerDay));
+	private static bool IsEndEarlierInYear(DateTime start, DateTime end)
+		=> end.Month < start.Month
+			|| (end.Month == start.Month && (end.Day < start.Day
+				|| (end.Day == start.Day && (end.Ticks % TimeSpan.TicksPerDay) < (start.Ticks % TimeSpan.TicksPerDay))));
+
+	private static bool TryParseDate(RequestProcess process, string s, string? jformat, out DateTimeOffset dateTimeOffset) {
+		try {
+			if (jformat is not null) {
+				var format = ConvertJavaFormat(jformat);
+				dateTimeOffset = DateTime.ParseExact(s, jformat, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+			} else
+				dateTimeOffset = DateTimeOffset.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces | DateTimeStyles.AssumeUniversal);
+			return true;
+		} catch (FormatException) {
+			if (jformat is not null)
+				process.Log(LogLevel.Warning, $"In element <interval>: Could not parse '{s}' as a date with format '{jformat}'.");
+			else
+				process.Log(LogLevel.Warning, $"In element <interval>: Could not parse '{s}' as a date.");
+			dateTimeOffset = default;
+			return false;
 		}
 	}
 
@@ -143,40 +147,4 @@ public sealed class Interval(TemplateElementCollection? jformat, TemplateElement
 
 		return builder.ToString();
 	}
-
-	/*public static Interval FromXml(XmlNode node, AimlLoader loader) {
-		// Search for XML attributes.
-		XmlAttribute attribute;
-
-		TemplateElementCollection style = null;
-		TemplateElementCollection jformat = null;
-		TemplateElementCollection start = null;
-		TemplateElementCollection end = null;
-
-		attribute = node.Attributes["style"];
-		if (attribute != null) style = new TemplateElementCollection(attribute.Value);
-		attribute = node.Attributes["jformat"];
-		if (attribute != null) jformat = new TemplateElementCollection(attribute.Value);
-		attribute = node.Attributes["from"];
-		if (attribute != null) start = new TemplateElementCollection(attribute.Value);
-		attribute = node.Attributes["to"];
-		if (attribute != null) end = new TemplateElementCollection(attribute.Value);
-
-		// Search for properties in elements.
-		foreach (XmlNode node2 in node.ChildNodes) {
-			if (node2.NodeType == XmlNodeType.Element) {
-				if (node2.Name.Equals("style", StringComparison.InvariantCultureIgnoreCase)) {
-					style = TemplateElementCollection.FromXml(node2, loader);
-				} else if (node2.Name.Equals("jformat", StringComparison.InvariantCultureIgnoreCase)) {
-					jformat = TemplateElementCollection.FromXml(node2, loader);
-				} else if (node2.Name.Equals("from", StringComparison.InvariantCultureIgnoreCase)) {
-					start = TemplateElementCollection.FromXml(node2, loader);
-				} else if (node2.Name.Equals("to", StringComparison.InvariantCultureIgnoreCase)) {
-					end = TemplateElementCollection.FromXml(node2, loader);
-				}
-			}
-		}
-
-		return new Interval(jformat, start, end, style);
-	}*/
 }
