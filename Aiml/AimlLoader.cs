@@ -13,27 +13,29 @@ public class AimlLoader(Bot bot) {
 
 	internal static readonly Dictionary<string, TemplateTagParser> tags = new(StringComparer.InvariantCultureIgnoreCase) {
 		// Elements that the reflection method can't handle
-		{ "oob"      , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "learn"    , (el, loader) => new Tags.Learn(el) },
+		{ "learnf"   , (el, loader) => new Tags.LearnF(el) },
+		{ "oob"      , (el, loader) => Tags.Oob.FromXml(el, loader) },
 		{ "select"   , Tags.Select.FromXml },
 
 		// AIML 2.1 draft rich media elements
-		{ "button"   , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback", "url") },
-		{ "br"       , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "break"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "card"     , (node, loader) => Tags.Oob.FromXml(node, loader, "image", "title", "subtitle", "button") },
-		{ "carousel" , (node, loader) => Tags.Oob.FromXml(node, loader, "card") },
-		{ "delay"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "image"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "img"      , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "hyperlink", (node, loader) => Tags.Oob.FromXml(node, loader, "text", "url") },
-		{ "link"     , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "url") },
-		{ "list"     , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-		{ "ul"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-		{ "ol"       , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-		{ "olist"    , (node, loader) => Tags.Oob.FromXml(node, loader, "item") },
-		{ "reply"    , (node, loader) => Tags.Oob.FromXml(node, loader, "text", "postback") },
-		{ "split"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
-		{ "video"    , (node, loader) => Tags.Oob.FromXml(node, loader) },
+		{ "button"   , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "postback", "url") },
+		{ "br"       , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "break"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "card"     , (el, loader) => Tags.Oob.FromXml(el, loader, "image", "title", "subtitle", "button") },
+		{ "carousel" , (el, loader) => Tags.Oob.FromXml(el, loader, "card") },
+		{ "delay"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "image"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "img"      , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "hyperlink", (el, loader) => Tags.Oob.FromXml(el, loader, "text", "url") },
+		{ "link"     , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "url") },
+		{ "list"     , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
+		{ "ul"       , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
+		{ "ol"       , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
+		{ "olist"    , (el, loader) => Tags.Oob.FromXml(el, loader, "item") },
+		{ "reply"    , (el, loader) => Tags.Oob.FromXml(el, loader, "text", "postback") },
+		{ "split"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
+		{ "video"    , (el, loader) => Tags.Oob.FromXml(el, loader) },
 
 		// Invalid template-level elements
 		{ "eval"     , SubtagHandler },
@@ -109,13 +111,16 @@ public class AimlLoader(Bot bot) {
 	public static void AddCustomTag(Type type) => AddCustomTag(type.Name.ToLowerInvariant(), type);
 	public static void AddCustomTag(string elementName, Type type) {
 		var builder = new TemplateElementBuilder(type);
-		tags.Add(elementName, (el, loader) => (TemplateNode) builder.Parse(el, loader));
+		if (!tags.TryAdd(elementName, (el, loader) => (TemplateNode) builder.Parse(el, loader)))
+			throw new ArgumentException($"An AIML template element named <{elementName}> already exists.");
 	}
 	public static void AddCustomTag(string elementName, TemplateTagParser parser) => tags.Add(elementName, parser);
 
 	public static void AddCustomMediaElement(string elementName, MediaElementType mediaElementType, MediaElementParser parser, params string[] childElementNames) {
-		tags.Add(elementName, (node, loader) => Tags.Oob.FromXml(node, loader, childElementNames));
-		mediaElements.Add(elementName, (mediaElementType, parser));
+		if (!tags.TryAdd(elementName, (node, loader) => Tags.Oob.FromXml(node, loader, childElementNames)))
+			throw new ArgumentException("Cannot add a custom rich media element with the same name as an existing AIML template element.");
+		if (!mediaElements.TryAdd(elementName, (mediaElementType, parser)))
+			throw new ArgumentException($"A rich media element named <{elementName}> already exists.");
 	}
 
 	public static void AddCustomOobHandler(string elementName, OobHandler handler) => oobHandlers.Add(elementName, el => { handler(el); return null; });
@@ -164,6 +169,8 @@ public class AimlLoader(Bot bot) {
 				this.ProcessCategory(target, el, filename);
 			}
 		}
+
+		this.bot.InvalidateVocabulary();
 	}
 
 	private void ProcessTopic(PatternNode target, XmlElement el, string filename) {

@@ -2,6 +2,8 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
+using Aiml.Maps;
+using Aiml.Sets;
 
 namespace Aiml;
 public class Bot {
@@ -12,7 +14,14 @@ public class Bot {
 	public Config Config { get; set; } = new();
 
 	public int Size { get; internal set; }
-	public int Vocabulary { get; internal set; }
+	public int Vocabulary {
+		get {
+			if (this.vocabulary is not null) return this.vocabulary.Value;
+			var vocabulary = this.CalculateVocabulary();
+			this.vocabulary = vocabulary;
+			return vocabulary;
+		}
+	}
 	public PatternNode Graphmaster { get; } = new(null, StringComparer.CurrentCultureIgnoreCase);
 
 	public Dictionary<string, string> Properties => this.Config.BotProperties;
@@ -45,6 +54,7 @@ public class Bot {
 		this.Maps.Add("singular", new Maps.SingularMap(inflector));
 		this.Maps.Add("plural", new Maps.PluralMap(inflector));
 	}
+	internal Bot(Random random) : this() => this.Random = random;
 
 	public void LoadAIML() => this.AimlLoader.LoadAimlFiles();
 
@@ -106,58 +116,56 @@ public class Bot {
 				phraseBuilder.Clear();
 				bool trailingBackslash = false, whitespace = false;
 
-					while (true) {
-						var c = reader.Read();
-						switch (c) {
-							case < 0 or '\r' or '\n':
-								// End of stream or newline
-								goto endOfPhrase;
-							case '\\':
-								c = reader.Read();
-								if (c is < 0 or '\r' or '\n') {
-									// A backslash at the end of a line indicates that the empty string should be included the set.
-									// Empty lines are ignored.
-									trailingBackslash = true;
-								} else {
-									if (whitespace) {
-										if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
-										whitespace = false;
-									}
-									phraseBuilder.Append((char) c);
+				while (true) {
+					var c = reader.Read();
+					switch (c) {
+						case < 0 or '\r' or '\n':
+							// End of stream or newline
+							goto endOfPhrase;
+						case '\\':
+							c = reader.Read();
+							if (c is < 0 or '\r' or '\n') {
+								// A backslash at the end of a line indicates that the empty string should be included the set.
+								// Empty lines are ignored.
+								trailingBackslash = true;
+							} else {
+								if (whitespace) {
+									if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
+									whitespace = false;
 								}
-								break;
-							case '#':
-								// Comment
-								do { c = (char) reader.Read(); } while (c is >= 0 and not '\r' and not '\n');
-								goto endOfPhrase;
-							default:
-								// Reduce consecutive whitespace into a single space.
-								// Defer appending the space until a non-whitespace character is read, so as to ignore trailing whitespace.
-								if (char.IsWhiteSpace((char) c)) {
-									whitespace = true;
-								} else {
-									if (whitespace) {
-										if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
-										whitespace = false;
-									}
-									phraseBuilder.Append((char) c);
+								phraseBuilder.Append((char) c);
+							}
+							break;
+						case '#':
+							// Comment
+							do { c = (char) reader.Read(); } while (c is >= 0 and not '\r' and not '\n');
+							goto endOfPhrase;
+						default:
+							// Reduce consecutive whitespace into a single space.
+							// Defer appending the space until a non-whitespace character is read, so as to ignore trailing whitespace.
+							if (char.IsWhiteSpace((char) c)) {
+								whitespace = true;
+							} else {
+								if (whitespace) {
+									if (phraseBuilder.Length > 0) phraseBuilder.Append(' ');
+									whitespace = false;
 								}
-								break;
-						}
+								phraseBuilder.Append((char) c);
+							}
+							break;
 					}
-					endOfPhrase:
-					var phrase = phraseBuilder.ToString();
-					if (!trailingBackslash && string.IsNullOrWhiteSpace(phrase)) continue;
-					set.Add(phrase);
 				}
-
-				if (set.Count == 1 && set[0].StartsWith("map:")) {
-					this.Sets[Path.GetFileNameWithoutExtension(file)] = new Sets.MapSet(set[0][4..], this);
-				} else {
-					this.Sets[Path.GetFileNameWithoutExtension(file)] = new Sets.StringSet(set, this.Config.StringComparer);
-					this.Vocabulary += set.Count;
-				}
+				endOfPhrase:
+				var phrase = phraseBuilder.ToString();
+				if (!trailingBackslash && string.IsNullOrWhiteSpace(phrase)) continue;
+				set.Add(phrase);
 			}
+
+			this.Sets[Path.GetFileNameWithoutExtension(file)] = set.Count == 1 && set[0].StartsWith("map:")
+				? new MapSet(set[0][4..], this)
+				: new StringSet(set, this.Config.StringComparer);
+			this.InvalidateVocabulary();
+		}
 
 		this.Log(LogLevel.Info, "Loaded " + this.Sets.Count + " set(s).");
 	}
@@ -195,7 +203,8 @@ public class Bot {
 				}
 			}
 
-			this.Maps[Path.GetFileNameWithoutExtension(file)] = new Maps.StringMap(map, this.Config.StringComparer);
+			this.Maps[Path.GetFileNameWithoutExtension(file)] = new StringMap(map, this.Config.StringComparer);
+			this.InvalidateVocabulary();
 		}
 
 		this.Log(LogLevel.Info, "Loaded " + this.Maps.Count + " map(s).");
@@ -224,6 +233,8 @@ public class Bot {
 	}
 
 	private bool logDirectoryCreated = false;
+	private int? vocabulary;
+
 	public void Log(LogLevel level, string message) {
 		if (level < this.Config.LogLevel) return;
 
@@ -372,4 +383,36 @@ public class Bot {
 	}
 
 	public string Denormalize(string text) => this.Config.DenormalSubstitutions.Apply(text);
+
+	private int CalculateVocabulary() {
+		static void TraversePatternNode(ICollection<string> words, PatternNode node) {
+			foreach (var e in node.Children) {
+				if (e.Key is not ("_" or "#" or "*" or "^" or "<that>" or "<topic>"))
+					words.Add(e.Key.TrimStart('$'));
+				TraversePatternNode(words, e.Value);
+			}
+		}
+
+		var words = new HashSet<string>(this.Config.StringComparer);
+		TraversePatternNode(words, this.Graphmaster);
+		foreach (var set in this.Sets.Values) {
+			switch (set) {
+				case StringSet stringSet:
+					foreach (var entry in stringSet) {
+						words.UnionWith(entry.Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries));
+					}
+					break;
+				case MapSet mapSet:
+					if (mapSet.Map is not StringMap stringMap) continue;
+					foreach (var entry in stringMap.Keys) {
+						words.UnionWith(entry.Split((char[]?) null, StringSplitOptions.RemoveEmptyEntries));
+					}
+					break;
+			}
+		}
+
+		return words.Count;
+	}
+
+	internal void InvalidateVocabulary() => this.vocabulary = null;
 }

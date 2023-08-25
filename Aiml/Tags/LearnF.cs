@@ -1,5 +1,4 @@
 using System.Xml;
-
 namespace Aiml.Tags;
 /// <summary>Processes the content as AIML and permanently adds it to the bot's brain, globally for all users.</summary>
 /// <remarks>
@@ -8,8 +7,13 @@ namespace Aiml.Tags;
 ///		<para>This element is defined by the AIML 2.0 specification.</para>
 /// </remarks>
 /// <seealso cref="AddTriple"/><seealso cref="Learn"/><seealso cref="Set"/>
-public sealed class LearnF(XmlElement el) : TemplateNode {
-	public XmlElement XmlElement { get; private set; } = el;
+public sealed class LearnF : TemplateNode {
+	public XmlElement XmlElement { get; private set; }
+
+	public LearnF(XmlElement el) {
+		this.XmlElement = el;
+		Learn.ValidateLearnElement(el);
+	}
 
 	public override string Evaluate(RequestProcess process) {
 		// Evaluate <eval> tags.
@@ -19,7 +23,8 @@ public sealed class LearnF(XmlElement el) : TemplateNode {
 		// Learn the result.
 		process.Log(LogLevel.Diagnostic, "In element <learnf>: learning new category: " + el.OuterXml);
 		var loader = new AimlLoader(process.Bot);
-		loader.ProcessCategory(process.Bot.Graphmaster, el, null);
+		foreach (var el2 in el.ChildNodes.OfType<XmlElement>())
+			loader.ProcessCategory(process.Bot.Graphmaster, el2, null);
 
 		// Write it to a file.
 		var newFile = !File.Exists(process.Bot.Config.LearnfFile) || new FileInfo(process.Bot.Config.LearnfFile).Length < 7;

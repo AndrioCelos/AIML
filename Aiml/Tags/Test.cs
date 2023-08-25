@@ -17,7 +17,7 @@ namespace Aiml.Tags;
 ///			</item>
 ///			<item>
 ///				<term><c>regex</c></term>
-///				<description>a regular expression that must match the response.</description>
+///				<description>a regular expression that must match the response. Whitespace characters will match any sequence of whitespace.</description>
 ///			</item>
 ///		</list>
 ///		<para>This element is part of an extension to AIML.</para>
@@ -29,29 +29,42 @@ public sealed class Test(string name, TemplateElementCollection expectedResponse
 
 	[AimlLoaderContructor]
 	public Test(TemplateElementCollection name, TemplateElementCollection? expected, TemplateElementCollection? regex, TemplateElementCollection children)
-		: this(name.Single() is TemplateText text ? text.Text : throw new ArgumentException("<test> attribute name must be a constant."),
-			  expected ?? regex ?? throw new ArgumentException("<test> element must have an expected or regex attribute."), regex is not null, children) {
+		: this(name.Single() is TemplateText text ? text.Text : throw new AimlException("<test> attribute 'name' must be constant."),
+			  expected ?? regex ?? throw new AimlException("<test> element must have an 'expected' or 'regex' attribute."), regex is not null, children) {
 		if (expected is not null && regex is not null)
-			throw new ArgumentException("<test> element cannot have both expected and regex attributes.", nameof(regex));
+			throw new AimlException("<test> element cannot have both 'expected' and 'regex' attributes.");
 	}
 
 	public override string Evaluate(RequestProcess process) {
 		process.Log(LogLevel.Info, $"In element <test>: running test {this.Name}");
 		var text = this.EvaluateChildren(process);
-		process.Log(LogLevel.Diagnostic, "In element <test>: processing text '" + text + "'.");
+		process.Log(LogLevel.Diagnostic, $"In element <test>: processing text '{text}'.");
 		var newRequest = new Aiml.Request(text, process.User, process.Bot);
 		text = process.Bot.ProcessRequest(newRequest, false, false, process.RecursionDepth + 1, out var duration).ToString().Trim();
-		process.Log(LogLevel.Diagnostic, "In element <test>: the request returned '" + text + "'.");
+		process.Log(LogLevel.Diagnostic, $"In element <test>: the request returned '{text}'.");
 
 		if (process.testResults != null) {
 			var expectedResponse = this.ExpectedResponse.Evaluate(process).Trim();
-			var result = this.UseRegex
-				? Regex.IsMatch(text.Trim(), "^" + Regex.Replace(expectedResponse, @"\s+", @"\s+") + "$")
-					? TestResult.Pass(duration)
-					: TestResult.Failure($"Expected regex: {expectedResponse}\nActual response: {text}", duration)
-				: process.Bot.Config.CaseSensitiveStringComparer.Equals(text, expectedResponse)
+			TestResult result;
+			if (this.UseRegex) {
+				var pattern = Regex.Replace(expectedResponse, @"\s+", @"\s+");
+				try {
+					var regex = new Regex(pattern, RegexOptions.IgnoreCase, TimeSpan.FromSeconds(5));
+					result = regex.IsMatch(text.Trim())
+						? TestResult.Pass(duration)
+						: TestResult.Failure($"Expected regex: {expectedResponse}\nActual response: {text}", duration);
+				} catch (ArgumentException ex) {
+					process.Log(LogLevel.Warning, $"In element <test>: Regex was invalid: {ex.Message}: {pattern}");
+					result = TestResult.Failure($"Regex was invalid: {pattern}", duration);
+				} catch (RegexMatchTimeoutException) {
+					process.Log(LogLevel.Warning, $"In element <test>: Regex check timed out: {pattern}");
+					result = TestResult.Failure("Regex check timed out", duration);
+				}
+			} else {
+				result = process.Bot.Config.CaseSensitiveStringComparer.Equals(text, expectedResponse)
 					? TestResult.Pass(duration)
 					: TestResult.Failure($"Expected response: {expectedResponse}\nActual response: {text}", duration);
+			}
 			process.testResults[this.Name] = result;
 		} else
 			process.Log(LogLevel.Warning, "In element <test>: Tests are not being used.");

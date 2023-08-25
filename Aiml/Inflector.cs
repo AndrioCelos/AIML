@@ -52,10 +52,11 @@ public class Inflector {
 		this.Singulars.Add(new Rule("(bus)es$", "$1"));
 		this.Singulars.Add(new Rule("(o)es$", "$1"));
 		this.Singulars.Add(new Rule("(shoe)s$", "$1"));
-		this.Singulars.Add(new Rule("(cris|ax|test)[ei]s$", "$1is"));
+		this.Singulars.Add(new Rule("(cris|test)[ei]s$", "$1is"));
+		this.Singulars.Add(new Rule("^(axe)s$", "$1"));  // Ambiguous between 'axe', 'ax' and 'axis', 'axe' was chosen.
 		this.Singulars.Add(new Rule("(octop|vir)(?:i|us)$", "$1us"));
 		this.Singulars.Add(new Rule("(alias|status)(?:es)?$", "$1"));  // 'alias' and 'status' are already singular, despite ending with 's'.
-		this.Singulars.Add(new Rule("^(ox)en", "$1"));
+		this.Singulars.Add(new Rule("(ox)en", "$1"));
 		this.Singulars.Add(new Rule("(vert|ind)ices$", "$1ex"));
 		this.Singulars.Add(new Rule("(matr)ices$", "$1ix"));
 		this.Singulars.Add(new Rule("(quiz)zes$", "$1"));
@@ -86,8 +87,8 @@ public class Inflector {
 		this.Plurals.Add(new Rule(plural + "$", "$0"));
 
 		// Capturing the first character preserves its case.
-		this.Singulars.Add(new Rule("(" + singular[0] + ")" + singularRemainder + "$", pluralRemainder));
-		this.Plurals.Add(new Rule("(" + plural[0] + ")" + pluralRemainder + "$", singularRemainder));
+		this.Singulars.Add(new Rule("(" + plural[0] + ")" + pluralRemainder + "$", $"$1{singularRemainder}"));
+		this.Plurals.Add(new Rule("(" + singular[0] + ")" + singularRemainder + "$", $"$1{pluralRemainder}"));
 	}
 
 	public string Singularize(string word) => this.ApplyRules(word, this.Singulars);

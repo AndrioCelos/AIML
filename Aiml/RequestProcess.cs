@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace Aiml; 
 /// <summary>Contains data that is used during request processing, but is not stored after the request completes.</summary>
 public class RequestProcess {
-	RequestSentence Sentence { get; }
+	public RequestSentence Sentence { get; }
 	public int RecursionDepth { get; }
 	internal Template? template;
 	internal readonly List<string> patternPathTokens = new();

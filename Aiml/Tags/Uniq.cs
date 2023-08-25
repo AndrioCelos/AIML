@@ -55,6 +55,6 @@ public sealed class Uniq(TemplateElementCollection subj, TemplateElementCollecti
 			return process.Bot.Config.DefaultTriple;
 		}
 
-		return subj is null ? triple.Subject : pred is null ? triple.Predicate : triple.Object;
+		return obj is null ? triple.Object : subj is null ? triple.Subject : triple.Predicate;
 	}
 }

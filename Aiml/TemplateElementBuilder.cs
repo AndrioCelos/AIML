@@ -27,17 +27,17 @@ internal class TemplateElementBuilder {
 			if (param.ParameterType == typeof(TemplateElementCollection)) {
 				// Either an attribute parameter or the children parameter.
 				if (param.Name == "children") {
-					this.parameterData[i] = new(ParameterType.Children, null, false, null, new());
+					this.parameterData[i] = new(ParameterType.Children, null, false, null);
 					this.contentParamIndex = i;
 				} else
-					this.parameterData[i] = new(ParameterType.Attribute, param.Name, nullabilityInfoContext.Create(param).WriteState == NullabilityState.Nullable, null, new());
+					this.parameterData[i] = new(ParameterType.Attribute, param.Name, nullabilityInfoContext.Create(param).WriteState == NullabilityState.Nullable, null);
 			} else if (param.ParameterType == typeof(XmlAttributeCollection)) {
-				this.parameterData[i] = new(ParameterType.XmlAttributeCollection, null, false, null, null);
+				this.parameterData[i] = new(ParameterType.XmlAttributeCollection, null, false, null);
 			} else if (param.ParameterType == typeof(XmlElement)) {
-				this.parameterData[i] = new(ParameterType.XmlElement, null, false, null, null);
+				this.parameterData[i] = new(ParameterType.XmlElement, null, false, null);
 			} else if (param.ParameterType.IsArray && param.ParameterType.GetArrayRank() == 1 && param.ParameterType.GetElementType() is Type elementType && typeof(TemplateNode).IsAssignableFrom(elementType)) {
 				// A special element parameter (for <li> elements).
-				this.parameterData[i] = new(ParameterType.SpecialElement, elementType.Name, false, elementType, new());
+				this.parameterData[i] = new(ParameterType.SpecialElement, elementType.Name, false, elementType);
 			} else
 				throw new ArgumentException($"Invalid parameter type: {param.ParameterType}");
 		}
@@ -45,45 +45,47 @@ internal class TemplateElementBuilder {
 
 	public object Parse(XmlElement el, AimlLoader loader) {
 		var values = new object?[this.parameterData.Length];
+		var children = new List<object>[this.parameterData.Length];
+		for (var i = 0; i < children.Length; i++) children[i] = new();
+		var content = this.contentParamIndex is not null ? children[this.contentParamIndex.Value] : null;
 
 		// Populate attribute parameters from XML attributes.
 		foreach (XmlAttribute attr in el.Attributes) {
 			var i = Array.FindIndex(this.parameterData, p => p.Type == ParameterType.Attribute && p.Name!.Equals(attr.Name, StringComparison.OrdinalIgnoreCase));
-			if (i < 0)
-				throw new AimlException($"Unknown attribute {attr.Name} in <{el.Name}> element");
-			values[i] = new TemplateElementCollection(attr.Value);
+			if (i >= 0)
+				values[i] = new TemplateElementCollection(attr.Value);
+			else if (!parameterData.Any(p => p.Type == ParameterType.XmlAttributeCollection))
+				throw new AimlException($"Unknown attribute '{attr.Name}' in <{el.Name}> element");
 		}
 		// Populate parameters from XML child nodes.
 		foreach (XmlNode childNode in el.ChildNodes) {
 			switch (childNode.NodeType) {
 				case XmlNodeType.Whitespace:
-					if (this.contentParamIndex is null) break;
-					this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(" "));
+					content?.Add(TemplateText.Space);
 					break;
 				case XmlNodeType.SignificantWhitespace:
-					if (this.contentParamIndex is null) break;
-					this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(childNode.InnerText));
+					content?.Add(new TemplateText(childNode.InnerText));
 					break;
 				case XmlNodeType.Text:
 				case XmlNodeType.CDATA:
-					if (this.contentParamIndex is null) throw new AimlException($"<{el.Name}> element cannot have content.");
-					this.parameterData[this.contentParamIndex.Value].Children!.Add(new TemplateText(childNode.InnerText));
+					if (content is null) throw new AimlException($"<{el.Name}> element cannot have content.");
+					content.Add(new TemplateText(childNode.InnerText));
 					break;
 				default:
 					if (childNode is XmlElement childElement) {
 						var i = Array.FindIndex(this.parameterData, p => p.Name is not null && p.Name.Equals(childElement.Name, StringComparison.OrdinalIgnoreCase));
 						if (i >= 0) {
 							if (this.parameterData[i].Type == ParameterType.SpecialElement)
-								this.parameterData[i].Children!.Add(loader.ParseChildElementInternal(childElement, this.parameterData[i].ChildType!));
+								children[i].Add(loader.ParseChildElementInternal(childElement, this.parameterData[i].ChildType!));
 							else
 								values[i] = values[i] is null
 									? TemplateElementCollection.FromXml(childElement, loader)
-									: throw new AimlException($"<{el.Name}> element {this.parameterData[i].Name} attribute provided multiple times.");
+									: throw new AimlException($"<{el.Name}> element '{this.parameterData[i].Name}' attribute provided multiple times.");
 						}
-						else if (this.contentParamIndex is null)
+						else if (content is null)
 							throw new AimlException($"<{el.Name}> element cannot have content.");
 						else
-							this.parameterData[this.contentParamIndex.Value].Children!.Add(loader.ParseElement(childElement));
+							content.Add(loader.ParseElement(childElement));
 					}
 					break;
 			}
@@ -93,16 +95,16 @@ internal class TemplateElementBuilder {
 			var param = this.parameterData[i];
 			switch (param.Type) {
 				case ParameterType.Children:
-					values[i] = new TemplateElementCollection(param.Children!.Cast<TemplateNode>());
+					values[i] = new TemplateElementCollection(children[i].Cast<TemplateNode>());
 					break;
 				case ParameterType.Attribute:
 					if (values[i] is null && !param.IsOptional)
-						throw new AimlException($"Missing required attribute {param.Name} in <{el.Name}> element");
+						throw new AimlException($"Missing required attribute '{param.Name}' in <{el.Name}> element");
 					break;
 				case ParameterType.SpecialElement:
-					var array = Array.CreateInstance(param.ChildType!, param.Children!.Count);
+					var array = Array.CreateInstance(param.ChildType!, children[i].Count);
 					for (var j = 0; j < array.Length; j++)
-						array.SetValue(param.Children[j], j);
+						array.SetValue(children[i][j], j);
 					values[i] = array;
 					break;
 				case ParameterType.XmlElement:
@@ -116,7 +118,7 @@ internal class TemplateElementBuilder {
 		return constructor.Invoke(values);
 	}
 
-	private record struct AimlParameterData(ParameterType Type, string? Name, bool IsOptional, Type? ChildType, List<object>? Children);
+	private record struct AimlParameterData(ParameterType Type, string? Name, bool IsOptional, Type? ChildType);
 	private enum ParameterType {
 		Children,
 		Attribute,

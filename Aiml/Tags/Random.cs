@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Aiml.Tags;
 /// <summary>Randomly selects and returns one of its child elements.</summary>
 /// <remarks>
@@ -8,29 +6,18 @@ namespace Aiml.Tags;
 /// </remarks>
 /// <seealso cref="Condition"/>
 public sealed class Random : TemplateNode {
-	private readonly Li[] items;
+	public Li[] Items { get; set; }
 
 	public Random(Li[] items) {
-		if (items.Length == 0) throw new AimlException("Random element must contain at least one item.");
-		this.items = items;
+		if (items.Length == 0) throw new AimlException("<random> element must contain at least one item.");
+		this.Items = items;
 	}
 
-	public Li Pick(RequestProcess process) => this.items[process.Bot.Random.Next(this.items.Length)];
+	public Li Pick(RequestProcess process) => this.Items[process.Bot.Random.Next(this.Items.Length)];
 
-	public override string Evaluate(RequestProcess process) {
-		var builder = new StringBuilder();
-		Li item;
-
-		do {
-			item = this.Pick(process);
-			if (builder.Length != 0) builder.Append(' ');
-			builder.Append(item.Evaluate(process));
-		} while (item.Children.Loop);
-
-		return builder.ToString();
-	}
+	public override string Evaluate(RequestProcess process) => this.Pick(process).Evaluate(process);
 
 	public class Li(TemplateElementCollection children) : RecursiveTemplateTag(children) {
-		public override string Evaluate(RequestProcess process) => this.Children?.Evaluate(process) ?? "";
+		public override string Evaluate(RequestProcess process) => this.Children.Evaluate(process);
 	}
 }

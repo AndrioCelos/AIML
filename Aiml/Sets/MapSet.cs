@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace Aiml.Sets; 
-/// <summary>
-///     Represents the set of phrases that are keys in an AIML map.
-/// </summary>
+namespace Aiml.Sets;
+/// <summary>Represents the set of phrases that are keys in an AIML map.</summary>
 public class MapSet : Set {
 	public Map Map { get; }
 	public Bot Bot { get; }
@@ -16,7 +14,7 @@ public class MapSet : Set {
 		this.Bot = bot ?? throw new ArgumentNullException(nameof(bot));
 		this.Map = this.Bot.Maps[mapName];
 		this.MaxWords = this.Map is Maps.StringMap stringMap
-			? stringMap.dictionary.Keys.Max(s => s.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length)
+			? stringMap.Keys.Max(s => s.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length)
 			: int.MaxValue;
 	}
 

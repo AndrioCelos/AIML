@@ -7,7 +7,7 @@ public class User {
 	public Dictionary<string, string> Predicates { get; }
 	public PatternNode Graphmaster { get; }
 
-	public string That { get; private set; }
+	public string That { get; internal set; }
 
 	public string Topic {
 		get => this.GetPredicate("topic");
@@ -43,7 +43,7 @@ public class User {
 			: this.Bot.Config.DefaultHistory;
 
 	public string GetRequest() => this.GetRequest(1);
-	public string GetRequest(int n) => n >= 1 & n <= this.Requests.Count ? this.Requests[n - 2].Text : this.Bot.Config.DefaultHistory;
+	public string GetRequest(int n) => n >= 1 & n <= this.Requests.Count ? this.Requests[n].Text : this.Bot.Config.DefaultHistory;
 	// Unlike <input>, the <request> tag does not count the request currently being processed.
 
 	public string GetResponse() => this.GetResponse(1);

@@ -8,9 +8,9 @@ namespace Aiml.Tags;
 ///		<para>The <c>oob</c> element is defined by the AIML 2.0 specification.
 ///			Rich media elements are defined by the AIML 2.1 draft specification.</para>
 /// </remarks>
-public sealed class Oob(string name, string? attributes, TemplateElementCollection children) : RecursiveTemplateTag(children) {
+public sealed class Oob(string name, string attributes, TemplateElementCollection children) : RecursiveTemplateTag(children) {
 	public string Name { get; } = name;
-	public string? Attributes { get; } = attributes;
+	public string Attributes { get; } = attributes;
 
 	public override string Evaluate(RequestProcess process)
 		=> this.Children != null

@@ -47,8 +47,7 @@ public class SubstitutionList : IList<Substitution> {
 	public string Apply(string text) {
 		if (this.substitutions.Count == 0) return text;
 		if (this.regex == null) this.CompileRegex();
-
-		return this.regex!.Replace(" " + text + " ", delegate (Match match) {
+		return this.regex!.Replace(text, match => {
 			foreach (var substitution in this.substitutions) {
 				if (match.Groups[substitution.groupIndex].Success) {
 					var replacement = substitution.Replacement;
@@ -74,7 +73,7 @@ public class SubstitutionList : IList<Substitution> {
 				}
 			}
 			return "";
-		}).Trim();
+		});
 	}
 
 	public int Count => this.substitutions.Count;
