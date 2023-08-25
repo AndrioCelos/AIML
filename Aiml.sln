@@ -1,15 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.28705.295
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlConsoleBot", "AimlConsoleBot\AimlConsoleBot.csproj", "{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aiml", "Aiml\Aiml.csproj", "{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AimlVoice", "AimlVoice\AimlVoice.csproj", "{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlConsoleBot", "AimlConsoleBot\AimlConsoleBot.csproj", "{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AimlTester", "AimlTester\AimlTester.csproj", "{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlTester", "AimlTester\AimlTester.csproj", "{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlTests", "AimlTests\AimlTests.csproj", "{45E3E9C0-4925-4D56-9581-08208D6FC880}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AimlVoice", "AimlVoice\AimlVoice.csproj", "{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,22 +19,26 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C48010E-DCE3-4E2E-B150-6813A71C5ADB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{391A20C0-6CFF-4AF3-8F3D-F510952C48B6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87FDAD9F-2079-478D-A863-8C34B0BFD8DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{45E3E9C0-4925-4D56-9581-08208D6FC880}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45E3E9C0-4925-4D56-9581-08208D6FC880}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45E3E9C0-4925-4D56-9581-08208D6FC880}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45E3E9C0-4925-4D56-9581-08208D6FC880}.Release|Any CPU.Build.0 = Release|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{374A2DCC-2782-476E-BCDC-D8DB9DC69ABC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
