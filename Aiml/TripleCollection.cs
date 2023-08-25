@@ -36,7 +36,7 @@ public class TripleCollection(IEqualityComparer<string> comparer) : ICollection<
 	public bool Add(Triple triple) {
 		// Add to the subject index.
 		if (!this.bySubject.TryGetValue(triple.Subject, out var subjIndex)) {
-			this.bySubject[triple.Subject] = subjIndex = new();
+			this.bySubject[triple.Subject] = subjIndex = new(this.comparer);
 			subjIndex[triple.Predicate] = new() { triple };
 		} else {
 			if (!subjIndex.TryGetValue(triple.Predicate, out var list))
@@ -49,7 +49,7 @@ public class TripleCollection(IEqualityComparer<string> comparer) : ICollection<
 		}
 		// Add to the object index.
 		if (!this.byObject.TryGetValue(triple.Object, out var objIndex)) {
-			this.byObject[triple.Object] = objIndex = new();
+			this.byObject[triple.Object] = objIndex = new(this.comparer);
 			objIndex[triple.Predicate] = new() { triple };
 		} else {
 			if (!objIndex.TryGetValue(triple.Predicate, out var list))
@@ -77,7 +77,6 @@ public class TripleCollection(IEqualityComparer<string> comparer) : ICollection<
 			return false;
 
 		this.RemoveFromObjectIndex(subj, pred, obj);
-
 		this.Count--;
 		return true;
 	}
@@ -106,6 +105,7 @@ public class TripleCollection(IEqualityComparer<string> comparer) : ICollection<
 			this.RemoveFromObjectIndex(t.Subject, t.Predicate, t.Object);
 		if (subjIndex.Count == 1) this.bySubject.Remove(subj);
 		else subjIndex.Remove(pred);
+		this.Count -= list.Count;
 		return list.Count;
 	}
 	/// <summary>Removes the specified subject and all of its relations from this collection.</summary>
@@ -120,6 +120,7 @@ public class TripleCollection(IEqualityComparer<string> comparer) : ICollection<
 			count += list.Count;
 		}
 		this.bySubject.Remove(subj);
+		this.Count -= count;
 		return count;
 	}
 

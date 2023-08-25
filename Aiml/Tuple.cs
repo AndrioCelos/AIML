@@ -51,6 +51,8 @@ public class Tuple : IEnumerable<KeyValuePair<string, string>> {
 		return null;
 	}
 
+	public override string ToString() => $"[ {string.Join(", ", from p in this select $"({p.Key}, {p.Value})")} ]";
+
 	public IEnumerator<KeyValuePair<string, string>> GetEnumerator() {
 		var tuple = this;
 		do {
