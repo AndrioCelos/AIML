@@ -64,7 +64,7 @@ internal class Program {
 		var bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
 		bot.LoadConfig();
-		bot.LoadAIML();
+		bot.LoadAiml();
 		bot.AimlLoader!.LoadAimlFiles(Path.Combine(botPath, testPath!));
 
 		var user = new User("User", bot);

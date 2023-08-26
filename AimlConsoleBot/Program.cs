@@ -60,7 +60,7 @@ internal class Program {
 		var bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
 		bot.LoadConfig();
-		bot.LoadAIML();
+		bot.LoadAiml();
 		var botName = bot.Properties.GetValueOrDefault("name", "Robot");
 		var user = new User("User", bot);
 
@@ -90,10 +90,10 @@ internal class Program {
 			}
 
 			var response = bot.Chat(new Request(input, user, bot), trace);
+			Console.WriteLine($"{botName}: {response}");
 			var messages = response.ToMessages();
 			replies = null;
 			foreach (var message in messages) {
-				Console.WriteLine($"{botName}: {message}");
 				if (message.BlockElements.OfType<Reply>().Any()) {
 					replies ??= new();
 					Console.ForegroundColor = ConsoleColor.DarkMagenta;

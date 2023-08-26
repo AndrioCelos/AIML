@@ -118,7 +118,7 @@ public class Program {
 		bot = new Bot(botPath);
 		bot.LogMessage += Bot_LogMessage;
 		bot.LoadConfig();
-		bot.LoadAIML();
+		bot.LoadAiml();
 
 		user = new User("User", bot);
 		synthesizer = new SpeechSynthesizer();
