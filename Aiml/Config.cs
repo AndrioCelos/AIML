@@ -33,6 +33,10 @@ public class Config {
 	public int LoopLimit = 100;
 	/// <summary>The response to a request that exceeds the loop limit.</summary>
 	public string LoopLimitMessage = "Too much looping in condition.";
+	/// <summary>Whether to enable the <see cref="Tags.System"/> template element.</summary>
+	public bool EnableSystem = false;
+	/// <summary>The return value of the <see cref="Tags.System"/> template element when it is disabled or the command fails.</summary>
+	public string SystemFailedMessage = "Failed to execute a system command.";
 
 	public int DefaultDelay = 1000;
 

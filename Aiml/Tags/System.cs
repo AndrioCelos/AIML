@@ -24,40 +24,52 @@ namespace Aiml.Tags;
 /// <seealso cref="SraiX"/>
 public sealed class System(TemplateElementCollection children) : RecursiveTemplateTag(children) {
 	public override string Evaluate(RequestProcess process) {
+		if (!process.Bot.Config.EnableSystem) {
+			process.Log(LogLevel.Warning, $"In element <system>: This element is disabled.");
+			return process.Bot.Config.SystemFailedMessage;
+		}
+
 		var command = this.EvaluateChildren(process);
 
-		var process2 = new Process();
-		if (Environment.OSVersion.Platform < PlatformID.Unix) {
-			// Windows
-			process2.StartInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/Q /D /C \"" +
-				Regex.Replace(command, @"[/\\:*?""<>^]", "^$0") + "\"");
-			//    /C string   Carries out the command specified by string and then terminates.
-			//    /Q          Turns echo off.
-			//    /D          Disable execution of AutoRun commands from registry (see 'CMD /?').
-		} else if (Environment.OSVersion.Platform == PlatformID.Unix) {
-			// UNIX
-			process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "bin", "sh"),
-				command.Replace(@"\", @"\\").Replace("\"", "\\\""));
-		} else
-			throw new PlatformNotSupportedException($"The system element is not supported on {Environment.OSVersion.Platform}.");
+		try {
+			var process2 = new Process();
+			if (Environment.OSVersion.Platform < PlatformID.Unix) {
+				// Windows
+				process2.StartInfo = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"), "/Q /D /C \"" +
+					Regex.Replace(command, @"[/\\:*?""<>^]", "^$0") + "\"");
+				//    /C string   Carries out the command specified by string and then terminates.
+				//    /Q          Turns echo off.
+				//    /D          Disable execution of AutoRun commands from registry (see 'CMD /?').
+			} else if (Environment.OSVersion.Platform == PlatformID.Unix) {
+				// UNIX
+				process2.StartInfo = new ProcessStartInfo(Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "bin", "sh"),
+					command.Replace(@"\", @"\\").Replace("\"", "\\\""));
+			} else {
+				process.Log(LogLevel.Warning, $"In element <system>: This element is not supported on {Environment.OSVersion.Platform}.");
+				return process.Bot.Config.SystemFailedMessage;
+			}
 
-		process2.StartInfo.UseShellExecute = false;
-		process2.StartInfo.RedirectStandardOutput = true;
-		process2.StartInfo.RedirectStandardError = true;
+			process2.StartInfo.UseShellExecute = false;
+			process2.StartInfo.RedirectStandardOutput = true;
+			process2.StartInfo.RedirectStandardError = true;
 
-		process.Log(LogLevel.Diagnostic, $"In element <system>: executing {process2.StartInfo.FileName} {process2.StartInfo.Arguments}");
+			process.Log(LogLevel.Diagnostic, $"In element <system>: executing {process2.StartInfo.FileName} {process2.StartInfo.Arguments}");
 
-		process2.Start();
+			process2.Start();
 
-		var output = process2.StandardOutput.ReadToEnd();
-		process2.StandardError.ReadToEnd();
-		process2.WaitForExit((int) process.Bot.Config.Timeout);
+			var output = process2.StandardOutput.ReadToEnd();
+			process2.StandardError.ReadToEnd();
+			process2.WaitForExit((int) process.Bot.Config.Timeout);
 
-		if (!process2.HasExited)
-			process.Log(LogLevel.Diagnostic, $"In element <system>: the process timed out.");
-		else if (process2.ExitCode != 0)
-			process.Log(LogLevel.Diagnostic, $"In element <system>: the process exited with code {process2.ExitCode}.");
+			if (!process2.HasExited)
+				process.Log(LogLevel.Diagnostic, $"In element <system>: the process timed out.");
+			else if (process2.ExitCode != 0)
+				process.Log(LogLevel.Diagnostic, $"In element <system>: the process exited with code {process2.ExitCode}.");
 
-		return output;
+			return output;
+		} catch (Exception ex) {
+			process.Log(LogLevel.Warning, $"In element <system>: The command failed: {ex}");
+			return process.Bot.Config.SystemFailedMessage;
+		}
 	}
 }
