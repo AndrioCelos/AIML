@@ -22,13 +22,13 @@ public class SubstitutionListTests {
 
 	[Test]
 	public void Apply_SentenceCase() {
-		var subject = new SubstitutionList() { new(" foo ", " bar ") };
+		var subject = new SubstitutionList(true) { new(" foo ", " bar ") };
 		Assert.AreEqual(" Bar ", subject.Apply(" Foo "));
 	}
 
 	[Test]
 	public void Apply_Uppercase() {
-		var subject = new SubstitutionList() { new(" foo ", " bar ") };
+		var subject = new SubstitutionList(true) { new(" foo ", " bar ") };
 		Assert.AreEqual(" BAR ", subject.Apply(" FOO "));
 	}
 

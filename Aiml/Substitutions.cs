@@ -6,12 +6,14 @@ using Newtonsoft.Json;
 
 namespace Aiml;
 public class SubstitutionList : IList<Substitution> {
-	private readonly List<Substitution> substitutions;
+	private readonly List<Substitution> substitutions = new();
 	private Regex? regex;
+	private readonly bool preserveCase;
+
 	private static readonly Regex substitutionRegex = new(@"\$(?:(\d+)|\{([^}]*)\}|([$&`'+_]))", RegexOptions.Compiled);
 
-	public SubstitutionList() => this.substitutions = new List<Substitution>();
-	public SubstitutionList(int capacity) => this.substitutions = new List<Substitution>(capacity);
+	public SubstitutionList() { }
+	public SubstitutionList(bool preserveCase) => this.preserveCase = preserveCase;
 
 	public Substitution this[int index] {
 		get => this.substitutions[index];
@@ -52,7 +54,7 @@ public class SubstitutionList : IList<Substitution> {
 				if (match.Groups[substitution.groupIndex].Success) {
 					var replacement = substitution.Replacement;
 
-					if (substitution.IsRegex)
+					if (substitution.IsRegex) {
 						// Process substitution tokens in the replacement.
 						replacement = substitutionRegex.Replace(replacement, m =>
 							m.Groups[1].Success ? match.Groups[substitution.groupIndex + int.Parse(m.Groups[1].Value)].Value :
@@ -66,9 +68,30 @@ public class SubstitutionList : IList<Substitution> {
 								'_' => text,
 								_ => m.Value
 							});
+					}
 
 					if (substitution.startSpace && !match.Value.StartsWith(" ")) replacement = replacement.TrimStart();
 					if (substitution.endSpace   && !match.Value.EndsWith(" ")  ) replacement = replacement.TrimEnd();
+
+					if (this.preserveCase) {
+						if (char.IsUpper(match.Value.FirstOrDefault(char.IsLetter))) {
+							if (match.Value.Where(char.IsLetter).All(char.IsUpper)) {
+								// Uppercase
+								replacement = replacement.ToUpper();
+							} else {
+								// Sentence case
+								var builder = new StringBuilder(replacement);
+								for (var i = 0; i < builder.Length; i++) {
+									if (char.IsLetter(builder[i])) {
+										builder[i] = char.ToUpper(builder[i]);
+										replacement = builder.ToString();
+										break;
+									}
+								}
+							}
+						}
+					}
+
 					return replacement;
 				}
 			}

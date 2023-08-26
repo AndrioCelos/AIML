@@ -47,15 +47,15 @@ public class Bot {
 
 		// Add predefined sets and maps.
 		var inflector = new Inflector(StringComparer.CurrentCultureIgnoreCase);
-		this.Sets.Add("number", new Sets.NumberSet());
-		this.Maps.Add("successor", new Maps.ArithmeticMap(1));
-		this.Maps.Add("predecessor", new Maps.ArithmeticMap(-1));
-		this.Maps.Add("singular", new Maps.SingularMap(inflector));
-		this.Maps.Add("plural", new Maps.PluralMap(inflector));
+		this.Sets.Add("number", new NumberSet());
+		this.Maps.Add("successor", new ArithmeticMap(1));
+		this.Maps.Add("predecessor", new ArithmeticMap(-1));
+		this.Maps.Add("singular", new SingularMap(inflector));
+		this.Maps.Add("plural", new PluralMap(inflector));
 	}
 	internal Bot(Random random) : this() => this.Random = random;
 
-	public void LoadAIML() => this.AimlLoader.LoadAimlFiles();
+	public void LoadAiml() => this.AimlLoader.LoadAimlFiles();
 
 	public void LoadConfig() {
 		this.Config = Config.FromFile(Path.Combine(this.ConfigDirectory, "config.json"));
@@ -66,8 +66,14 @@ public class Bot {
 		this.CheckDefaultProperties();
 
 		var inflector = new Inflector(this.Config.StringComparer);
-		this.Maps["singular"] = new Maps.SingularMap(inflector);
-		this.Maps["plural"] = new Maps.PluralMap(inflector);
+		this.Maps["singular"] = new SingularMap(inflector);
+		this.Maps["plural"] = new PluralMap(inflector);
+
+		this.Config.GenderSubstitutions = new(this.Config.SubstitutionsPreserveCase);
+		this.Config.PersonSubstitutions = new(this.Config.SubstitutionsPreserveCase);
+		this.Config.Person2Substitutions = new(this.Config.SubstitutionsPreserveCase);
+		this.Config.NormalSubstitutions = new(this.Config.SubstitutionsPreserveCase);
+		this.Config.DenormalSubstitutions = new(this.Config.SubstitutionsPreserveCase);
 
 		this.Config.LoadPredicates(Path.Combine(this.ConfigDirectory, "botpredicates.json"));
 		this.Config.LoadGender(Path.Combine(this.ConfigDirectory, "gender.json"));

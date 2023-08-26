@@ -82,26 +82,28 @@ public class Config {
 	/// <summary>Defined strings that delimit sentences in requests and responses. Defaults to [ ".", "!", "?", ";" ].</summary>
 	public char[] Splitters = new[] { '.', '!', '?', ';' };
 
-	/// <summary>If this is true, using the <c>set</c> template element to set a predicate or variable to the default value will unbind it instead.</summary>
-	public bool UnbindPredicatesWithDefaultValue = false;
+	/// <summary>Whether normalisation and other substitutions preserve the case of words.</summary>
+	public bool SubstitutionsPreserveCase;
 	/// <summary>Whether to have an empty response, after <see cref="Tags.Oob"/> tag processing, not change the path used for matching a that pattern.</summary>
 	public bool ThatExcludeEmptyResponse = false;
+	/// <summary>If this is true, using the <c>set</c> template element to set a predicate or variable to the default value will unbind it instead.</summary>
+	public bool UnbindPredicatesWithDefaultValue = false;
 
 	// These go in their own files.
 	/// <summary>Defines default values for bot predicates, used by the <c>bot</c> template element.</summary>
-	[JsonIgnore] public Dictionary<string, string> BotProperties { get; private set; } = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+	[JsonIgnore] public Dictionary<string, string> BotProperties { get; set; } = new(StringComparer.CurrentCultureIgnoreCase);
 	/// <summary>Defines default values for user predicates, used by the <c>get</c> template element.</summary>
-	[JsonIgnore] public Dictionary<string, string> DefaultPredicates { get; private set; } = new Dictionary<string, string>(StringComparer.CurrentCultureIgnoreCase);
+	[JsonIgnore] public Dictionary<string, string> DefaultPredicates { get; set; } = new(StringComparer.CurrentCultureIgnoreCase);
 	/// <summary>Defines substitutions used by the <c>gender</c> template element.</summary>
-	[JsonIgnore] public SubstitutionList GenderSubstitutions   { get; private set; } = new SubstitutionList();
+	[JsonIgnore] public SubstitutionList GenderSubstitutions   { get; set; } = new();
 	/// <summary>Defines substitutions used by the <c>person</c> template element.</summary>
-	[JsonIgnore] public SubstitutionList PersonSubstitutions   { get; private set; } = new SubstitutionList();
+	[JsonIgnore] public SubstitutionList PersonSubstitutions   { get; set; } = new();
 	/// <summary>Defines substitutions used by the <c>person2</c> template element.</summary>
-	[JsonIgnore] public SubstitutionList Person2Substitutions  { get; private set; } = new SubstitutionList();
+	[JsonIgnore] public SubstitutionList Person2Substitutions  { get; set; } = new();
 	/// <summary>Defines substitutions used in the normalisation process.</summary>
-	[JsonIgnore] public SubstitutionList NormalSubstitutions   { get; private set; } = new SubstitutionList();
+	[JsonIgnore] public SubstitutionList NormalSubstitutions   { get; set; } = new();
 	/// <summary>Defines substitutions used in the denormalisation process.</summary>
-	[JsonIgnore] public SubstitutionList DenormalSubstitutions { get; private set; } = new SubstitutionList();
+	[JsonIgnore] public SubstitutionList DenormalSubstitutions { get; set; } = new();
 
 	private void RebuildDictionaries() {
 		this.BotProperties = new Dictionary<string, string>(this.BotProperties, this.StringComparer);
